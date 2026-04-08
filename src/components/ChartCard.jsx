@@ -4,27 +4,30 @@ import { Card, Empty, Spin } from 'antd';
 export default function ChartCard({
   title,
   loading,
+  isEmpty,
   empty,
   children,
   style,
+  height,
 }) {
+  const isEmptyState = isEmpty || empty;
+
   return (
     <Card
       title={title}
-      style={{
-        marginBottom: 16,
-        ...style,
-      }}
+      style={{ marginBottom: 16, ...style }}
       bordered={false}
     >
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 40 }}>
+        <div style={{ height: height || 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Spin />
         </div>
-      ) : empty ? (
-        <Empty description="暫無資料" />
+      ) : isEmptyState ? (
+        <div style={{ height: height || 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Empty description="暫無資料" />
+        </div>
       ) : (
-        children
+        <div style={height ? { height } : undefined}>{children}</div>
       )}
     </Card>
   );

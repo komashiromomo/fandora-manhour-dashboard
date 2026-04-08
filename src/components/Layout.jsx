@@ -6,7 +6,6 @@ import { UserOutlined, LogoutOutlined } from '@ant-design/icons';
 import { useAuth } from '../auth/AuthContext';
 import { useData } from '../data/DataContext';
 import { ROLE_TABS, TAB_DEFINITIONS } from '../config/constants';
-import FilterToolbar from './FilterToolbar';
 
 const { Header, Content } = AntLayout;
 
@@ -70,11 +69,6 @@ export default function Layout({ children, activeTab, onTabChange }) {
           }))}
           style={{ margin: 0, paddingLeft: 24 }}
         />
-      </div>
-
-      {/* Filter Toolbar */}
-      <div style={{ background: '#fafafa', padding: '12px 24px', borderBottom: '1px solid #f0f0f0' }}>
-        <FilterToolbar />
       </div>
 
       {/* Content */}
