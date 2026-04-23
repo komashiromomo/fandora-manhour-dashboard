@@ -1,0 +1,234 @@
+/* ------------------------------------------------------------
+   FANDORA DESIGN SYSTEM — Colors & Type
+   Source: FANDORA CI Ver.2 (2024) — cool + warm variants
+   Primary brand: fandorashop.com
+   ------------------------------------------------------------ */
+
+/* ========== FONT IMPORTS ==========
+   The CI deck specifies Microsoft JhengHei (system CJK) and
+   embeds NotoSans + NotoSansMedium + Roboto.
+   Web substitutes (Google Fonts):
+     Latin display/ui  : "Noto Sans" (matches the embedded NotoSans)
+     Latin mono/number : "Roboto"    (matches the embedded Roboto)
+     CJK display/ui    : "Noto Sans TC" (closest to Microsoft JhengHei)
+   The Fandora wordmark itself is a rounded-geometric custom lockup
+   (display-only); use the raster logo asset, never retype it.
+*/
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@400;500;700&display=swap');
+
+:root {
+  /* ============ CORE BRAND COLORS ============ */
+  /* Cool variant (primary / default) */
+  --fd-cyan:         #00A4C6;   /* Brand Cyan — primary logomark & CTA */
+  --fd-cyan-hover:   #008FAE;   /* 10% darker for hover */
+  --fd-cyan-active:  #007A96;   /* 20% darker for pressed */
+  --fd-cyan-tint:    #D9F1F6;   /* very soft tint, hero gradients */
+  --fd-cyan-deep:    #1A3C45;   /* dark teal accent */
+
+  /* Warm variant (secondary CI theme) */
+  --fd-warm:         #FF9900;   /* Warm Orange — alt primary */
+  --fd-warm-alt:     #E69138;   /* deeper marketing tone */
+  --fd-warm-tint:    #FFE6BD;   /* soft warm tint */
+  --fd-warm-deep:    #783F04;   /* dark amber accent */
+
+  /* ============ INK / NEUTRALS ============ */
+  /* Near-black used for type and logo contrast */
+  --fd-ink:          #0B111F;   /* deep navy-black from CI */
+  --fd-ink-2:        #101620;   /* slightly softer */
+  --fd-ink-3:        #191919;   /* body text max-contrast */
+
+  --fd-gray-900:     #4D4D4D;
+  --fd-gray-800:     #5F6767;   /* body text secondary */
+  --fd-gray-700:     #595959;   /* captions, subtle ink */
+  --fd-gray-500:     #999999;
+  --fd-gray-400:     #BFBFBF;
+  --fd-gray-300:     #CCCCCC;
+  --fd-gray-200:     #EBEDF0;   /* dividers, card borders */
+  --fd-gray-100:     #F2F2F2;   /* page surface alt */
+  --fd-gray-50:      #F2F5FA;   /* cool-tinted page surface */
+  --fd-white:        #FFFFFF;
+
+  /* ============ SEMANTIC TOKENS ============ */
+  /* Foreground */
+  --fg-1:            var(--fd-ink);         /* primary text */
+  --fg-2:            var(--fd-gray-800);    /* body secondary */
+  --fg-3:            var(--fd-gray-700);    /* captions */
+  --fg-muted:        var(--fd-gray-500);
+  --fg-on-brand:     var(--fd-white);       /* text on cyan */
+  --fg-brand:        var(--fd-cyan);        /* brand-colored text/icons */
+  --fg-link:         var(--fd-cyan);
+  --fg-link-hover:   var(--fd-cyan-hover);
+
+  /* Background */
+  --bg-page:         var(--fd-white);
+  --bg-page-alt:     var(--fd-gray-50);
+  --bg-surface:      var(--fd-white);
+  --bg-surface-alt:  var(--fd-gray-100);
+  --bg-brand:        var(--fd-cyan);
+  --bg-brand-soft:   var(--fd-cyan-tint);
+  --bg-dark:         var(--fd-ink);         /* dark sections */
+
+  /* Borders */
+  --border-1:        var(--fd-gray-200);    /* default divider */
+  --border-2:        var(--fd-gray-300);
+  --border-strong:   var(--fd-ink);
+
+  /* State */
+  --state-success:   #2BB673;
+  --state-warn:      #F2994A;
+  --state-error:     #E14D4D;
+  --state-info:      var(--fd-cyan);
+
+  /* ============ RADII ============ */
+  /* Fandora leans on soft-but-not-bubbly rounding */
+  --r-xs:   4px;    /* tags, badges */
+  --r-sm:   6px;    /* small buttons, inputs */
+  --r-md:   10px;   /* cards */
+  --r-lg:   16px;   /* feature cards, modal */
+  --r-xl:   24px;   /* hero elements */
+  --r-pill: 999px;  /* pill buttons, chips */
+
+  /* ============ SHADOWS ============ */
+  --shadow-1: 0 1px 2px rgba(11, 17, 31, 0.04), 0 1px 1px rgba(11, 17, 31, 0.03);
+  --shadow-2: 0 4px 12px rgba(11, 17, 31, 0.06), 0 1px 2px rgba(11, 17, 31, 0.04);
+  --shadow-3: 0 12px 32px rgba(11, 17, 31, 0.10), 0 2px 6px rgba(11, 17, 31, 0.05);
+  --shadow-brand: 0 8px 24px rgba(0, 164, 198, 0.28);
+  --shadow-inset: inset 0 0 0 1px rgba(11, 17, 31, 0.06);
+
+  /* ============ SPACING (4pt base) ============ */
+  --sp-0:  0;
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+  --sp-20: 80px;
+  --sp-24: 96px;
+
+  /* ============ TYPOGRAPHY ============ */
+  --font-sans:    "Noto Sans TC", "Noto Sans", "Microsoft JhengHei", "PingFang TC",
+                  -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-latin:   "Noto Sans", "Roboto", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:    "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-numeric: "Roboto", "Noto Sans", sans-serif;  /* stats, prices, counters */
+
+  /* Type sizes (in px) */
+  --text-xs:   12px;
+  --text-sm:   14px;
+  --text-base: 16px;
+  --text-md:   18px;
+  --text-lg:   20px;
+  --text-xl:   24px;
+  --text-2xl:  32px;
+  --text-3xl:  40px;
+  --text-4xl:  56px;
+  --text-5xl:  72px;
+  --text-hero: 96px;
+
+  /* Line heights */
+  --lh-tight:  1.1;
+  --lh-snug:   1.25;
+  --lh-normal: 1.5;
+  --lh-loose:  1.7;
+
+  /* Letter spacing */
+  --ls-tight:  -0.02em;
+  --ls-normal: 0;
+  --ls-wide:   0.04em;
+  --ls-wider:  0.12em;   /* used on English captions like "FANDORASHOP.COM" */
+
+  /* Weights */
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-semi:    600;
+  --fw-bold:    700;
+  --fw-black:   900;
+}
+
+/* ========================================================
+   SEMANTIC TYPE CLASSES
+   Use these wherever possible instead of raw font sizes.
+   ======================================================== */
+html { color-scheme: light; }
+body {
+  font-family: var(--font-sans);
+  color: var(--fg-1);
+  background: var(--bg-page);
+  font-size: var(--text-base);
+  line-height: var(--lh-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.display { /* hero slogans, key statements */
+  font-family: var(--font-sans);
+  font-size: var(--text-4xl);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-tight);
+  font-weight: var(--fw-bold);
+  color: var(--fg-1);
+}
+
+.h1 { font-size: var(--text-3xl);  line-height: var(--lh-snug); font-weight: var(--fw-bold);  letter-spacing: var(--ls-tight); }
+.h2 { font-size: var(--text-2xl);  line-height: var(--lh-snug); font-weight: var(--fw-bold); }
+.h3 { font-size: var(--text-xl);   line-height: var(--lh-snug); font-weight: var(--fw-semi); }
+.h4 { font-size: var(--text-lg);   line-height: var(--lh-snug); font-weight: var(--fw-semi); }
+
+.body-lg  { font-size: var(--text-md);   line-height: var(--lh-normal); }
+.body     { font-size: var(--text-base); line-height: var(--lh-normal); }
+.body-sm  { font-size: var(--text-sm);   line-height: var(--lh-normal); color: var(--fg-2); }
+.caption  { font-size: var(--text-xs);   line-height: var(--lh-normal); color: var(--fg-3); letter-spacing: var(--ls-wide); }
+
+/* English over-line label — distinctive CI pattern (e.g. "The Character Library Project") */
+.eyebrow {
+  font-family: var(--font-latin);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-wider);
+  text-transform: uppercase;
+  color: var(--fg-brand);
+}
+
+/* Big numbers (stats like "10年+", "500+") — Roboto-heavy per CI */
+.stat-num {
+  font-family: var(--font-numeric);
+  font-size: var(--text-3xl);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+  color: var(--fg-on-brand);
+}
+.stat-label {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-bold);
+  color: var(--fg-1);
+}
+
+/* Price treatment — commerce-critical */
+.price {
+  font-family: var(--font-numeric);
+  font-weight: var(--fw-bold);
+  color: var(--fg-1);
+}
+.price--brand { color: var(--fg-brand); }
+.price__strike { color: var(--fg-muted); text-decoration: line-through; font-weight: var(--fw-regular); }
+
+/* Native element defaults (h1–h6 / p) mapped to our scale */
+h1 { font-size: var(--text-3xl); line-height: var(--lh-snug); font-weight: var(--fw-bold); letter-spacing: var(--ls-tight); margin: 0 0 var(--sp-4); }
+h2 { font-size: var(--text-2xl); line-height: var(--lh-snug); font-weight: var(--fw-bold); margin: 0 0 var(--sp-3); }
+h3 { font-size: var(--text-xl);  line-height: var(--lh-snug); font-weight: var(--fw-semi); margin: 0 0 var(--sp-3); }
+h4 { font-size: var(--text-lg);  line-height: var(--lh-snug); font-weight: var(--fw-semi); margin: 0 0 var(--sp-2); }
+p  { margin: 0 0 var(--sp-3); color: var(--fg-2); }
+a  { color: var(--fg-link); text-decoration: none; }
+a:hover { color: var(--fg-link-hover); text-decoration: underline; }
+small { font-size: var(--text-xs); color: var(--fg-3); }
+
+/* Dark variant — used on hero or dark product sections */
+.on-dark { color: var(--fg-on-brand); }
+.on-dark h1, .on-dark h2, .on-dark h3, .on-dark h4, .on-dark p { color: inherit; }
+.on-dark .body-sm, .on-dark .caption { color: rgba(255,255,255,0.72); }

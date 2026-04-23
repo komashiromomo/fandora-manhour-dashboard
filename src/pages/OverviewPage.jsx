@@ -1,204 +1,275 @@
 import React, { useMemo } from 'react';
 import { useData } from '../data/DataContext';
-import KPIGrid from '../components/KPIGrid';
-import ChartContainer from '../components/ChartContainer';
-import Collapsible from '../components/Collapsible';
+import Card, { CardHead } from '../components/Card';
+import Icon from '../components/Icon';
+import Sparkline from '../components/Sparkline';
+import MonthBars from '../components/MonthBars';
+import Donut from '../components/Donut';
+import MultiLine from '../components/MultiLine';
+import RankList from '../components/RankList';
+import { fmtHours, fmtMoney, fmtCompact, pct } from '../shared/format';
 import { CHART_COLORS } from '../shared/constants';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
 import _ from 'lodash-es';
 
 export default function OverviewPage() {
-  const { filteredLogs, monthlyCostMap, projectCosts, selectedMonth } = useData();
+  const {
+    workLogs, selectedMonth, setSelectedMonth,
+    availableMonths, filteredLogs, filteredSalary,
+  } = useData();
 
-  const totalHours = useMemo(() => _.sumBy(filteredLogs, 'hours'), [filteredLogs]);
-  const employeeCount = useMemo(() => _.uniqBy(filteredLogs, 'name').length, [filteredLogs]);
-  const taskCount = useMemo(() => _.uniqBy(filteredLogs, 'task').length, [filteredLogs]);
-  const avgHoursPerPerson = employeeCount > 0 ? totalHours / employeeCount : 0;
+  // KPIs from filtered data
+  const kpis = useMemo(() => {
+    const total = _.sumBy(filteredLogs, 'hours');
+    const emps = _.uniqBy(filteredLogs, 'name').length;
+    const projs = _.uniq(filteredLogs.map(l => l.ipProject).filter(Boolean)).length;
+    const cost = _.sumBy(filteredSalary, r => Number(r['總計']) || 0);
+    return { total, emps, projs, avg: emps ? total / emps : 0, cost, rate: total ? cost / total : 0 };
+  }, [filteredLogs, filteredSalary]);
 
-  const totalCost = useMemo(() => {
-    if (selectedMonth === 'all') return Object.values(monthlyCostMap).reduce((a, b) => a + b, 0);
-    return monthlyCostMap[selectedMonth] || 0;
-  }, [monthlyCostMap, selectedMonth]);
+  // Delta vs previous month (only meaningful when a specific month is selected)
+  const deltaTotal = useMemo(() => {
+    if (selectedMonth === 'all') return null;
+    const idx = availableMonths.indexOf(selectedMonth);
+    const prev = idx > 0 ? availableMonths[idx - 1] : null;
+    if (!prev) return null;
+    const cur = _.sumBy(workLogs.filter(l => l.month === selectedMonth), 'hours');
+    const prevHours = _.sumBy(workLogs.filter(l => l.month === prev), 'hours');
+    if (!prevHours) return null;
+    return ((cur - prevHours) / prevHours) * 100;
+  }, [selectedMonth, availableMonths, workLogs]);
 
-  const avgHourlyCost = totalHours > 0 ? totalCost / totalHours : 0;
+  // Monthly totals (for MonthBars + hero sparkline)
+  const monthTotals = useMemo(
+    () => availableMonths.map(m => ({
+      month: m,
+      hours: _.sumBy(workLogs.filter(l => l.month === m), 'hours'),
+    })),
+    [availableMonths, workLogs]
+  );
+  const sparkData = monthTotals.map(m => m.hours);
 
-  const kpiItems = [
-    { label: '總工時', value: totalHours, unit: '小時' },
-    { label: '員工人數', value: employeeCount, unit: '人' },
-    { label: '專案數量', value: taskCount, unit: '個' },
-    { label: '平均每人工時', value: Math.round(avgHoursPerPerson * 100) / 100, unit: '小時' },
-    { label: '總管理費用', value: Math.round(totalCost), unit: 'NTD' },
-    { label: '平均時薪成本', value: Math.round(avgHourlyCost * 100) / 100, unit: 'NTD/小時' },
-  ];
-
-  const monthlyData = useMemo(() => {
-    const grouped = _.groupBy(filteredLogs, 'month');
-    return Object.entries(grouped).map(([month, logs]) => ({
-      month, hours: _.sumBy(logs, 'hours'),
-    })).sort((a, b) => a.month.localeCompare(b.month));
+  // Top IPs (exclude 非授權IP for project analysis)
+  const topIPs = useMemo(() => {
+    const filtered = filteredLogs.filter(l => l.ipProject && l.ipProject !== '非授權IP');
+    return _(filtered)
+      .groupBy('ipProject')
+      .map((logs, name) => ({ name, hours: _.sumBy(logs, 'hours') }))
+      .orderBy(['hours'], ['desc'])
+      .take(8)
+      .value();
   }, [filteredLogs]);
 
-  const projectHoursData = useMemo(() => {
-    const ipLogs = filteredLogs.filter(l => l.ipProject !== '非授權IP');
-    const grouped = _.groupBy(ipLogs, 'ipProject');
-    return Object.entries(grouped).map(([name, logs]) => ({
-      name, hours: _.sumBy(logs, 'hours'),
-    })).sort((a, b) => b.hours - a.hours);
+  // Dept donut
+  const deptBreakdown = useMemo(() => {
+    return _(filteredLogs)
+      .groupBy('dept')
+      .map((logs, name) => ({ name, value: _.sumBy(logs, 'hours') }))
+      .orderBy(['value'], ['desc'])
+      .value();
   }, [filteredLogs]);
 
-  const taskTop10 = useMemo(() => {
-    const grouped = _.groupBy(filteredLogs, 'task');
-    return Object.entries(grouped).map(([name, logs]) => ({
-      name, hours: _.sumBy(logs, 'hours'),
-    })).sort((a, b) => b.hours - a.hours).slice(0, 10);
+  // Top work types
+  const topWork = useMemo(() => {
+    return _(filteredLogs)
+      .groupBy('task')
+      .map((logs, name) => ({ name, hours: _.sumBy(logs, 'hours') }))
+      .orderBy(['hours'], ['desc'])
+      .take(8)
+      .value();
   }, [filteredLogs]);
 
-  const employeeRanking = useMemo(() => {
-    const grouped = _.groupBy(filteredLogs, 'name');
-    return Object.entries(grouped).map(([name, logs]) => ({
-      name, hours: _.sumBy(logs, 'hours'),
-    })).sort((a, b) => b.hours - a.hours);
-  }, [filteredLogs]);
-
-  const deptData = useMemo(() => {
-    const grouped = _.groupBy(filteredLogs, 'dept');
-    return Object.entries(grouped).map(([name, logs]) => ({
-      name, hours: _.sumBy(logs, 'hours'),
-    })).sort((a, b) => b.hours - a.hours);
-  }, [filteredLogs]);
-
-  const costTop10 = useMemo(() => projectCosts.slice(0, 10), [projectCosts]);
-
-  const busiestProject = projectHoursData[0];
-  const mostDiverseEmployee = useMemo(() => {
-    const grouped = _.groupBy(filteredLogs, 'name');
-    let max = { name: '', count: 0 };
-    for (const [name, logs] of Object.entries(grouped)) {
-      const count = _.uniqBy(logs, 'task').length;
-      if (count > max.count) max = { name, count };
-    }
-    return max;
-  }, [filteredLogs]);
-  const topEmployee = employeeRanking[0];
-
-  const ipTrend = useMemo(() => {
-    const top5 = projectHoursData.slice(0, 5).map(p => p.name);
-    const ipLogs = filteredLogs.filter(l => top5.includes(l.ipProject));
-    const months = _.uniq(ipLogs.map(l => l.month)).sort();
-    return months.map(m => {
+  // Top-5 IP monthly trend (whole dataset)
+  const trend = useMemo(() => {
+    const overall = _(workLogs.filter(l => l.ipProject && l.ipProject !== '非授權IP'))
+      .groupBy('ipProject')
+      .map((logs, name) => ({ name, hours: _.sumBy(logs, 'hours') }))
+      .orderBy(['hours'], ['desc'])
+      .take(5)
+      .value();
+    const top = overall.map(o => o.name);
+    const rows = availableMonths.map(m => {
       const row = { month: m };
-      top5.forEach(ip => {
-        row[ip] = _.sumBy(ipLogs.filter(l => l.month === m && l.ipProject === ip), 'hours');
+      top.forEach(ip => {
+        row[ip] = _.sumBy(
+          workLogs.filter(l => l.month === m && l.ipProject === ip),
+          'hours'
+        );
       });
       return row;
     });
-  }, [filteredLogs, projectHoursData]);
-  const top5IPs = projectHoursData.slice(0, 5).map(p => p.name);
+    return { rows, series: top };
+  }, [workLogs, availableMonths]);
+
+  // Insight strip (last month vs prev)
+  const lastMonthData = monthTotals[monthTotals.length - 1];
+  const prevMonthData = monthTotals[monthTotals.length - 2];
+  const lastDelta = prevMonthData?.hours
+    ? ((lastMonthData.hours - prevMonthData.hours) / prevMonthData.hours) * 100
+    : 0;
+
+  if (!workLogs.length) {
+    return (
+      <Card style={{ textAlign: 'center', padding: 48 }}>
+        <div style={{ fontSize: 14, color: 'var(--fd-gray-700)', marginBottom: 8 }}>
+          尚無工時資料
+        </div>
+        <div className="muted" style={{ fontSize: 12 }}>
+          請到「設定」頁點擊「測試連線」並重新載入數據
+        </div>
+      </Card>
+    );
+  }
 
   return (
-    <div>
-      <KPIGrid items={kpiItems} />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: 24 }}>
-        <ChartContainer title="月度工時對比" height={300}>
-          <BarChart data={monthlyData}>
-            <XAxis dataKey="month" fontSize={12} />
-            <YAxis fontSize={12} />
-            <Tooltip formatter={(v) => v.toLocaleString()} />
-            <Bar dataKey="hours" fill={CHART_COLORS[0]} name="工時" />
-          </BarChart>
-        </ChartContainer>
-
-        <ChartContainer title="專案工時分佈" height={300}>
-          <PieChart>
-            <Pie data={projectHoursData.slice(0, 10)} dataKey="hours" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-              {projectHoursData.slice(0, 10).map((_, i) => (
-                <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-              ))}
-            </Pie>
-            <Tooltip formatter={(v) => v.toLocaleString()} />
-          </PieChart>
-        </ChartContainer>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: 24 }}>
-        <ChartContainer title="工作項目工時 Top 10" height={Math.max(300, taskTop10.length * 35)}>
-          <BarChart data={taskTop10} layout="vertical">
-            <XAxis type="number" fontSize={12} />
-            <YAxis dataKey="name" type="category" width={120} fontSize={12} />
-            <Tooltip formatter={(v) => v.toLocaleString()} />
-            <Bar dataKey="hours" fill={CHART_COLORS[1]} name="工時" />
-          </BarChart>
-        </ChartContainer>
-
-        <ChartContainer title="員工工時排名" height={Math.max(300, employeeRanking.length * 35)}>
-          <BarChart data={employeeRanking} layout="vertical">
-            <XAxis type="number" fontSize={12} />
-            <YAxis dataKey="name" type="category" width={80} fontSize={12} />
-            <Tooltip formatter={(v) => v.toLocaleString()} />
-            <Bar dataKey="hours" fill={CHART_COLORS[2]} name="工時" />
-          </BarChart>
-        </ChartContainer>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: 24 }}>
-        <ChartContainer title="部門工時排名" height={Math.max(300, deptData.length * 35)}>
-          <BarChart data={deptData} layout="vertical">
-            <XAxis type="number" fontSize={12} />
-            <YAxis dataKey="name" type="category" width={100} fontSize={12} />
-            <Tooltip formatter={(v) => v.toLocaleString()} />
-            <Bar dataKey="hours" fill={CHART_COLORS[3]} name="工時" />
-          </BarChart>
-        </ChartContainer>
-
-        <ChartContainer title="專案費用排行 Top 10" height={Math.max(300, costTop10.length * 35)}>
-          <BarChart data={costTop10} layout="vertical">
-            <XAxis type="number" fontSize={12} />
-            <YAxis dataKey="name" type="category" width={120} fontSize={12} />
-            <Tooltip formatter={(v) => `NTD ${v.toLocaleString()}`} />
-            <Bar dataKey="cost" fill={CHART_COLORS[4]} name="費用" />
-          </BarChart>
-        </ChartContainer>
-      </div>
-
-      <Collapsible title="進階分析" defaultOpen={false}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
-          <div style={cardStyle}>
-            <div style={cardLabel}>最繁忙專案</div>
-            <div style={cardValue}>{busiestProject?.name || '-'}</div>
-            <div style={cardSub}>{busiestProject ? `${busiestProject.hours.toLocaleString()} 小時` : ''}</div>
+    <>
+      {/* ===== Hero KPI ===== */}
+      <div className="hero-kpi">
+        <div className="kpi kpi--primary">
+          <span className="kpi__label">總工時 · Total Hours</span>
+          <div>
+            <span className="kpi__value">{fmtHours(kpis.total)}</span>
+            <span className="kpi__unit">小時</span>
           </div>
-          <div style={cardStyle}>
-            <div style={cardLabel}>最多元員工</div>
-            <div style={cardValue}>{mostDiverseEmployee.name || '-'}</div>
-            <div style={cardSub}>{mostDiverseEmployee.count ? `${mostDiverseEmployee.count} 種工作項目` : ''}</div>
-          </div>
-          <div style={cardStyle}>
-            <div style={cardLabel}>最高工時員工</div>
-            <div style={cardValue}>{topEmployee?.name || '-'}</div>
-            <div style={cardSub}>{topEmployee ? `${topEmployee.hours.toLocaleString()} 小時` : ''}</div>
+          <div className="kpi__foot">
+            {deltaTotal !== null && (
+              <span className={'kpi__delta ' + (deltaTotal >= 0 ? 'kpi__delta--up' : 'kpi__delta--down')}>
+                <Icon name={deltaTotal >= 0 ? 'up' : 'down'} size={10} />
+                {Math.abs(deltaTotal).toFixed(1)}%
+              </span>
+            )}
+            <Sparkline
+              data={sparkData}
+              width={160}
+              height={36}
+              stroke="#fff"
+              fill="rgba(255,255,255,.18)"
+            />
           </div>
         </div>
 
-        {top5IPs.length > 0 && (
-          <ChartContainer title="Top 5 授權IP 月度趨勢" height={300}>
-            <LineChart data={ipTrend}>
-              <XAxis dataKey="month" fontSize={12} />
-              <YAxis fontSize={12} />
-              <Tooltip />
-              <Legend />
-              {top5IPs.map((ip, i) => (
-                <Line key={ip} type="monotone" dataKey={ip} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={false} />
-              ))}
-            </LineChart>
-          </ChartContainer>
-        )}
-      </Collapsible>
-    </div>
+        <div className="kpi">
+          <span className="kpi__label">員工人數</span>
+          <div>
+            <span className="kpi__value">{kpis.emps}</span>
+            <span className="kpi__unit">人</span>
+          </div>
+          <div className="kpi__foot">
+            <span className="kpi__caption">平均每人 {fmtHours(kpis.avg)} 小時</span>
+          </div>
+        </div>
+
+        <div className="kpi">
+          <span className="kpi__label">IP 專案數</span>
+          <div>
+            <span className="kpi__value">{kpis.projs}</span>
+            <span className="kpi__unit">個</span>
+          </div>
+          <div className="kpi__foot">
+            <span className="kpi__caption">含授權與自有 IP</span>
+          </div>
+        </div>
+
+        <div className="kpi">
+          <span className="kpi__label">管銷總支出</span>
+          <div>
+            <span className="kpi__value">${fmtCompact(kpis.cost)}</span>
+            <span className="kpi__unit">NTD</span>
+          </div>
+          <div className="kpi__foot">
+            <span className="kpi__caption">平均時薪成本 ${fmtMoney(kpis.rate)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ===== Insight strip ===== */}
+      <div className="insight-strip">
+        <div className="insight-strip__icon"><Icon name="trend" size={16} /></div>
+        <div className="insight-strip__text">
+          近月 <b>{lastMonthData?.month || '—'}</b> 總工時
+          <b> {fmtHours(lastMonthData?.hours || 0)} 小時</b>，相比前月
+          {lastDelta >= 0
+            ? <> 上升 <b style={{ color: '#1C8C58' }}>{lastDelta.toFixed(1)}%</b></>
+            : <> 下降 <b style={{ color: '#C03A3A' }}>{Math.abs(lastDelta).toFixed(1)}%</b></>}
+          ； 主力 IP 為 <b>{topIPs[0]?.name || '—'}</b>
+          ，佔比約 <b>{Math.round(pct(topIPs[0]?.hours || 0, kpis.total))}%</b>。
+        </div>
+        <button className="btn btn--ghost"><Icon name="download" size={14} />匯出</button>
+      </div>
+
+      {/* ===== Row 1: monthly bars + dept donut ===== */}
+      <div className="grid-2">
+        <Card>
+          <CardHead
+            title="月度工時走勢"
+            subtitle="點擊任一月份快速篩選"
+            right={
+              <>
+                <span className="chip chip--dot" style={{ color: 'var(--accent)' }}>當月</span>
+                <span className="muted" style={{ fontSize: 12 }}>點擊切換</span>
+              </>
+            }
+          />
+          <MonthBars
+            data={monthTotals}
+            selectedMonth={selectedMonth}
+            onSelect={setSelectedMonth}
+          />
+        </Card>
+        <Card>
+          <CardHead title="部門工時佔比" subtitle="按工時分配" />
+          <Donut data={deptBreakdown.slice(0, 6)} />
+        </Card>
+      </div>
+
+      {/* ===== Row 2: Top IP + Top Work ===== */}
+      <div className="grid-2">
+        <Card>
+          <CardHead
+            title="Top IP 專案"
+            subtitle="依工時排序"
+            right={<span className="eyebrow-label">Ranked</span>}
+          />
+          <RankList items={topIPs} />
+        </Card>
+        <Card>
+          <CardHead
+            title="Top 工作項目"
+            subtitle="總體投入結構"
+            right={<span className="eyebrow-label">Ranked</span>}
+          />
+          <RankList items={topWork} />
+        </Card>
+      </div>
+
+      {/* ===== Row 3: Multi-line trend ===== */}
+      {trend.series.length > 0 && (
+        <Card>
+          <CardHead
+            title={`IP 月度趨勢 · Top ${trend.series.length}`}
+            subtitle={`近 ${availableMonths.length} 個月`}
+            right={
+              <>
+                {trend.series.map((s, i) => (
+                  <span
+                    key={s}
+                    className="chip"
+                    style={{
+                      color: CHART_COLORS[i % CHART_COLORS.length],
+                      background: 'transparent',
+                      border: 'none',
+                      fontWeight: 500,
+                    }}
+                  >
+                    <span className="legend-dot" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
+                    {s}
+                  </span>
+                ))}
+              </>
+            }
+          />
+          <MultiLine data={trend.rows} series={trend.series} height={220} />
+        </Card>
+      )}
+    </>
   );
 }
-
-const cardStyle = { background: '#f8f9fa', borderRadius: 8, padding: 16, textAlign: 'center' };
-const cardLabel = { fontSize: 12, color: '#999', marginBottom: 4 };
-const cardValue = { fontSize: 18, fontWeight: 600, color: '#333' };
-const cardSub = { fontSize: 12, color: '#666', marginTop: 4 };

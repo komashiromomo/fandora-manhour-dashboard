@@ -1,122 +1,225 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useData } from '../data/DataContext';
+import Card from '../components/Card';
+import Icon from '../components/Icon';
 import DragDropUpload from '../components/DragDropUpload';
-import { LS_API_KEY, LS_FOLDER_ID, LS_COST_SHEET_ID, CACHE_KEY_DATE } from '../shared/constants';
+import {
+  LS_API_KEY, LS_FOLDER_ID, LS_COST_SHEET_ID,
+  DEFAULT_API_KEY, DEFAULT_FOLDER_ID, DEFAULT_COST_SHEET_ID,
+  CACHE_KEY_DATE,
+} from '../shared/constants';
 import { testConnection } from '../api/gdrive';
+import { fmtHours } from '../shared/format';
 
 export default function SettingsPage() {
-  const { loadData, handleWorkLogUpload, handleSalaryUpload, clearData, workLogs, salaryData } = useData();
+  const {
+    loadData, handleWorkLogUpload, handleSalaryUpload,
+    clearData, workLogs, salaryData,
+  } = useData();
 
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem(LS_API_KEY) || '');
-  const [folderId, setFolderId] = useState(() => localStorage.getItem(LS_FOLDER_ID) || '');
-  const [costSheetId, setCostSheetId] = useState(() => localStorage.getItem(LS_COST_SHEET_ID) || '');
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [testMsg, setTestMsg] = useState('');
-  const [testSuccess, setTestSuccess] = useState(null);
-  const [uploadMsg, setUploadMsg] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [apiKey, setApiKey] = useState(
+    () => localStorage.getItem(LS_API_KEY) || DEFAULT_API_KEY || ''
+  );
+  const [folderId, setFolderId] = useState(
+    () => localStorage.getItem(LS_FOLDER_ID) || DEFAULT_FOLDER_ID || ''
+  );
+  const [costSheetId, setCostSheetId] = useState(
+    () => localStorage.getItem(LS_COST_SHEET_ID) || DEFAULT_COST_SHEET_ID || ''
+  );
+  const [testResult, setTestResult] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState('');
+  const [syncedAt, setSyncedAt] = useState(null);
+
+  useEffect(() => {
+    try { setSyncedAt(localStorage.getItem(CACHE_KEY_DATE)); } catch {}
+  }, [workLogs, salaryData]);
 
   const handleSave = () => {
-    if (apiKey) localStorage.setItem(LS_API_KEY, apiKey); else localStorage.removeItem(LS_API_KEY);
-    if (folderId) localStorage.setItem(LS_FOLDER_ID, folderId); else localStorage.removeItem(LS_FOLDER_ID);
-    if (costSheetId) localStorage.setItem(LS_COST_SHEET_ID, costSheetId); else localStorage.removeItem(LS_COST_SHEET_ID);
-    setSaving(true);
-    setTimeout(() => setSaving(false), 1500);
+    localStorage.setItem(LS_API_KEY, apiKey);
+    localStorage.setItem(LS_FOLDER_ID, folderId);
+    localStorage.setItem(LS_COST_SHEET_ID, costSheetId);
+    setTestResult({ success: true, message: '設定已儲存' });
   };
 
   const handleTest = async () => {
-    setTestMsg('測試中...');
-    setTestSuccess(null);
-    const result = await testConnection(apiKey || import.meta.env.VITE_GDRIVE_API_KEY, folderId || import.meta.env.VITE_GDRIVE_FOLDER_ID);
-    setTestMsg(result.message);
-    setTestSuccess(result.success);
+    setTestResult({ testing: true });
+    const res = await testConnection(apiKey, folderId);
+    setTestResult(res);
   };
 
-  const handleLoad = async () => {
-    try { await loadData(); setUploadMsg('資料載入完成'); } catch (err) { setUploadMsg(`載入失敗: ${err.message}`); }
+  const handleWorkUpload = async (files) => {
+    setUploadStatus('正在解析工時檔案…');
+    try {
+      const count = await handleWorkLogUpload(files);
+      setUploadStatus(`成功載入 ${count} 筆工時紀錄`);
+    } catch (err) {
+      setUploadStatus(`載入失敗：${err.message}`);
+    }
   };
 
-  const handleWorkFiles = async (files) => {
-    const count = await handleWorkLogUpload(files);
-    setUploadMsg(`已載入 ${count} 筆工時紀錄`);
+  const handleSalUpload = async (files) => {
+    setUploadStatus('正在解析薪資檔案…');
+    try {
+      const count = await handleSalaryUpload(files);
+      setUploadStatus(`成功載入 ${count} 筆薪資紀錄`);
+    } catch (err) {
+      setUploadStatus(`載入失敗：${err.message}`);
+    }
   };
 
-  const handleSalaryFiles = async (files) => {
-    const count = await handleSalaryUpload(files);
-    setUploadMsg(`已載入 ${count} 筆薪資紀錄`);
-  };
-
-  const handleClear = () => {
-    if (window.confirm('確定要清除所有數據嗎？')) { clearData(); setUploadMsg('所有數據已清除'); }
-  };
-
-  const lastLoaded = localStorage.getItem(CACHE_KEY_DATE);
+  const syncLabel = syncedAt
+    ? new Date(syncedAt).toLocaleString('zh-TW')
+    : '尚未同步';
 
   return (
-    <div>
-      <div style={sectionStyle}>
-        <h3 style={sectionTitle}>API 設定</h3>
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Google Drive API Key</label>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input type={showApiKey ? 'text' : 'password'} value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="輸入 API Key" style={{ ...inputStyle, flex: 1 }} />
-            <button onClick={() => setShowApiKey(!showApiKey)} style={smallBtnStyle}>{showApiKey ? '隱藏' : '顯示'}</button>
+    <div className="stack" style={{ gap: 20 }}>
+      {/* ===== Data source ===== */}
+      <Card>
+        <div className="card__head">
+          <div>
+            <span className="eyebrow-label">System Settings</span>
+            <div className="card__title" style={{ fontSize: 18, marginTop: 4 }}>資料來源設定</div>
+            <div className="card__sub">連接 Google Drive 工時檔案與管銷費用表</div>
+          </div>
+          <div className="cluster">
+            <button type="button" className="btn" onClick={handleTest}>
+              <Icon name="plug" size={14} />測試連線
+            </button>
+            <button type="button" className="btn btn--primary" onClick={handleSave}>
+              <Icon name="check" size={14} />儲存
+            </button>
+            <button type="button" className="btn" onClick={loadData}>
+              <Icon name="refresh" size={14} />現在載入數據
+            </button>
           </div>
         </div>
-        <div style={fieldStyle}>
-          <label style={labelStyle}>工時表資料夾 ID</label>
-          <input type="text" value={folderId} onChange={e => setFolderId(e.target.value)} placeholder="輸入 Folder ID" style={inputStyle} />
-        </div>
-        <div style={fieldStyle}>
-          <label style={labelStyle}>薪資表 Sheet ID <span style={{ color: '#999' }}>（選填）</span></label>
-          <input type="text" value={costSheetId} onChange={e => setCostSheetId(e.target.value)} placeholder="輸入 Cost Sheet ID" style={inputStyle} />
-        </div>
-        <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-          <button onClick={handleSave} style={primaryBtnStyle}>{saving ? '已保存 ✓' : '保存設定'}</button>
-          <button onClick={handleTest} style={secondaryBtnStyle}>測試連線</button>
-          <button onClick={handleLoad} style={secondaryBtnStyle}>現在載入數據</button>
-        </div>
-        {testMsg && <p style={{ marginTop: 12, fontSize: 14, color: testSuccess ? '#4CAF50' : testSuccess === false ? '#e53935' : '#666' }}>{testMsg}</p>}
-        <div style={helpStyle}>
-          <p>API Key：前往 Google Cloud Console → APIs & Services → Credentials 取得</p>
-          <p>Folder ID：Google Drive 資料夾網址中 /folders/ 後面的那段字串</p>
-          <p>Cost Sheet ID：Google 試算表網址中 /d/ 後面的那段字串</p>
-        </div>
-      </div>
 
-      <div style={sectionStyle}>
-        <h3 style={sectionTitle}>手動上傳</h3>
-        <div style={{ marginBottom: 24 }}>
-          <label style={labelStyle}>工時表上傳</label>
-          <DragDropUpload onFiles={handleWorkFiles} accept=".xlsx" label="拖拽或點擊上傳工時表 (.xlsx)" />
-        </div>
-        <div>
-          <label style={labelStyle}>薪資表上傳</label>
-          <DragDropUpload onFiles={handleSalaryFiles} accept=".xlsx" label="拖拽或點擊上傳薪資表 (.xlsx)" />
-        </div>
-        {uploadMsg && <p style={{ marginTop: 12, fontSize: 14, color: '#00BCD4' }}>{uploadMsg}</p>}
-      </div>
+        <div className="settings-section">
+          <div className="settings-row">
+            <div>
+              <div className="settings-row__label">Google API Key</div>
+              <div className="settings-row__hint">用於讀取共享資料夾內的 Excel</div>
+            </div>
+            <div>
+              <input
+                type="password"
+                value={apiKey}
+                onChange={e => setApiKey(e.target.value)}
+                placeholder="AIza…"
+              />
+            </div>
+          </div>
 
-      <div style={sectionStyle}>
-        <h3 style={sectionTitle}>資料管理</h3>
-        <div style={{ fontSize: 14, color: '#666', marginBottom: 16 }}>
-          <p>工時紀錄：{workLogs.length} 筆</p>
-          <p>薪資紀錄：{salaryData.length} 筆</p>
-          <p>最後載入：{lastLoaded ? new Date(lastLoaded).toLocaleString() : '尚未載入'}</p>
+          <div className="settings-row">
+            <div>
+              <div className="settings-row__label">工時資料夾 ID</div>
+              <div className="settings-row__hint">HR 每月上傳工時 Excel 的 Drive 資料夾</div>
+            </div>
+            <div>
+              <input
+                type="text"
+                value={folderId}
+                onChange={e => setFolderId(e.target.value)}
+                placeholder="1X5MnrR…"
+              />
+              {testResult && (
+                <div className="settings-row__hint" style={{ marginTop: 8 }}>
+                  {testResult.testing && <span className="muted">正在測試…</span>}
+                  {testResult.success !== undefined && !testResult.testing && (
+                    <>
+                      <span className={`chip chip--dot ${testResult.success ? 'chip--brand' : ''}`}
+                        style={!testResult.success ? { color: 'var(--state-error)', background: 'rgba(225,77,77,.10)' } : undefined}>
+                        {testResult.success ? '已連線' : '連線失敗'}
+                      </span>
+                      <span className="muted" style={{ marginLeft: 8 }}>
+                        {testResult.message}
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
+              <div className="settings-row__hint" style={{ marginTop: 4 }}>
+                上次同步 {syncLabel}
+              </div>
+            </div>
+          </div>
+
+          <div className="settings-row">
+            <div>
+              <div className="settings-row__label">管銷費用 Sheet ID</div>
+              <div className="settings-row__hint">每月營運總成本匯總表</div>
+            </div>
+            <div>
+              <input
+                type="text"
+                value={costSheetId}
+                onChange={e => setCostSheetId(e.target.value)}
+                placeholder="13qiOx5…"
+              />
+            </div>
+          </div>
+
+          <div className="settings-row">
+            <div>
+              <div className="settings-row__label">快取資料</div>
+              <div className="settings-row__hint">當日讀取的工時與費用資料</div>
+            </div>
+            <div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span className="chip">工時紀錄 {fmtHours(workLogs.length)} 筆</span>
+                <span className="chip">費用 {salaryData.length} 筆</span>
+                <button type="button" className="btn btn--ghost" onClick={clearData}>
+                  清除快取
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="settings-row">
+            <div>
+              <div className="settings-row__label">存取控制</div>
+              <div className="settings-row__hint">限 @fandora.co 成員登入</div>
+            </div>
+            <div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <span className="chip chip--brand chip--dot">已啟用</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <button onClick={handleClear} style={dangerBtnStyle}>清除所有數據</button>
-      </div>
+      </Card>
+
+      {/* ===== Manual upload ===== */}
+      <Card>
+        <div className="card__head">
+          <div>
+            <span className="eyebrow-label">Manual Upload</span>
+            <div className="card__title" style={{ fontSize: 18, marginTop: 4 }}>手動上傳檔案</div>
+            <div className="card__sub">無法連線時可手動拖放工時或薪資 Excel</div>
+          </div>
+        </div>
+        <div className="settings-section" style={{ maxWidth: 'unset' }}>
+          <div className="grid-2" style={{ marginBottom: 0 }}>
+            <div>
+              <div className="settings-row__label" style={{ marginBottom: 8 }}>工時 Excel</div>
+              <DragDropUpload onFiles={handleWorkUpload} accept=".xlsx" multiple>
+                拖放工時 Excel 檔案到這裡（或點擊選擇）
+              </DragDropUpload>
+            </div>
+            <div>
+              <div className="settings-row__label" style={{ marginBottom: 8 }}>薪資 Excel</div>
+              <DragDropUpload onFiles={handleSalUpload} accept=".xlsx" multiple>
+                拖放薪資 Excel 檔案到這裡（或點擊選擇）
+              </DragDropUpload>
+            </div>
+          </div>
+          {uploadStatus && (
+            <div className="settings-row__hint" style={{ marginTop: 12 }}>
+              {uploadStatus}
+            </div>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }
-
-const sectionStyle = { background: '#fff', borderRadius: 8, padding: 24, marginBottom: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' };
-const sectionTitle = { fontSize: 18, fontWeight: 600, color: '#333', margin: '0 0 20px' };
-const fieldStyle = { marginBottom: 16 };
-const labelStyle = { display: 'block', fontSize: 14, color: '#666', marginBottom: 6 };
-const inputStyle = { width: '100%', padding: '8px 12px', border: '1px solid #d9d9d9', borderRadius: 6, fontSize: 14, outline: 'none', boxSizing: 'border-box' };
-const primaryBtnStyle = { padding: '8px 20px', borderRadius: 6, border: 'none', background: '#00BCD4', color: '#fff', fontSize: 14, cursor: 'pointer' };
-const secondaryBtnStyle = { padding: '8px 20px', borderRadius: 6, border: '1px solid #d9d9d9', background: '#fff', color: '#666', fontSize: 14, cursor: 'pointer' };
-const smallBtnStyle = { padding: '8px 12px', borderRadius: 6, border: '1px solid #d9d9d9', background: '#fff', color: '#666', fontSize: 13, cursor: 'pointer' };
-const dangerBtnStyle = { padding: '8px 20px', borderRadius: 6, border: 'none', background: '#e53935', color: '#fff', fontSize: 14, cursor: 'pointer' };
-const helpStyle = { marginTop: 20, padding: 16, background: '#f8f9fa', borderRadius: 6, fontSize: 13, color: '#999', lineHeight: 1.8 };

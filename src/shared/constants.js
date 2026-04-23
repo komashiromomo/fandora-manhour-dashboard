@@ -52,18 +52,18 @@ export const KNOWN_IP_LIST = [
   'hololive', '帕比順順', '麵包小偷', '葬送的芙莉蓮', 'ROSIE', '其他IP',
 ];
 
-// ===== 圖表配色 =====
+// ===== 圖表配色 (Fandora CI palette) =====
 export const CHART_COLORS = [
-  '#00BCD4', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A',
-  '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B88B',
+  '#00A4C6', '#1A3C45', '#5F6767', '#BFBFBF', '#E69138',
+  '#F2C94C', '#2BB673', '#9B51E0', '#EB5757', '#56CCF2',
 ];
 
 // ===== 分頁定義 =====
 export const TAB_DEFINITIONS = [
-  { id: 'overview', label: '總表' },
-  { id: 'projects', label: '專案分析' },
-  { id: 'workTypes', label: '工作項目分析' },
-  { id: 'employees', label: '員工分析' },
-  { id: 'departments', label: '部門分析' },
-  { id: 'settings', label: '設定' },
+  { id: 'overview',    label: '總表',      icon: 'grid',   eyebrow: 'Overview',        title: '總表概況',     desc: '全公司工時與費用總覽' },
+  { id: 'projects',    label: 'IP 專案',   icon: 'folder', eyebrow: 'IP Projects',     title: 'IP 專案分析',  desc: '按授權 IP 分組的工時與成本分攤' },
+  { id: 'workTypes',   label: '工作項目',  icon: 'tag',    eyebrow: 'Work Categories', title: '工作項目分析', desc: '按工作分類檢視投入結構' },
+  { id: 'employees',   label: '員工',      icon: 'user',   eyebrow: 'People',          title: '員工分析',     desc: '個別成員的工時分佈' },
+  { id: 'departments', label: '部門',      icon: 'users',  eyebrow: 'Departments',     title: '部門分析',     desc: '部門效率與成員貢獻' },
+  { id: 'settings',    label: '設定',      icon: 'gear',   eyebrow: 'Settings',        title: '系統設定',     desc: '資料來源與存取控制' },
 ];
