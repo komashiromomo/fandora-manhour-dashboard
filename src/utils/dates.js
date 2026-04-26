@@ -12,6 +12,7 @@
 import {
   ALL_STAFF_FILENAME_REGEX,
   INDIVIDUAL_FILENAME_REGEX,
+  INDIVIDUAL_FILENAME_REGEX_LEGACY,
 } from '../config/constants';
 
 /**
@@ -109,28 +110,47 @@ export function extractMonthFromFilename(filename) {
 }
 
 /**
- * 從個人版檔名取暱稱
- * "工作日誌_2026年_Kate" → "Kate"
+ * 從個人版檔名取本名
+ * 新格式："工作日誌_2026年_余凱紓_後勤部" → "余凱紓"
+ * 舊格式："工作日誌_2026年_Kate" → "Kate"（後續經 normalizeName 對應）
  * @param {string} filename
  * @returns {string|null}
  */
-export function extractNicknameFromFilename(filename) {
+export function extractNameFromFilename(filename) {
   if (!filename) return null;
   const match = filename.match(INDIVIDUAL_FILENAME_REGEX);
-  return match ? match[2] : null;
+  if (match) return match[2];
+  const legacy = filename.match(INDIVIDUAL_FILENAME_REGEX_LEGACY);
+  return legacy ? legacy[2].trim() : null;
+}
+
+// 向後相容 alias
+export const extractNicknameFromFilename = extractNameFromFilename;
+
+/**
+ * 從個人版檔名取部門（僅新格式有）
+ * "工作日誌_2026年_余凱紓_後勤部" → "後勤部"
+ * @param {string} filename
+ * @returns {string|null}
+ */
+export function extractDeptFromFilename(filename) {
+  if (!filename) return null;
+  const match = filename.match(INDIVIDUAL_FILENAME_REGEX);
+  return match ? match[3] : null;
 }
 
 /**
  * 從個人版檔名取年份
- * "工作日誌_2026年_Kate" → "2026"
+ * "工作日誌_2026年_余凱紓_後勤部" → "2026"
  * @param {string} filename
  * @returns {string|null}
  */
 export function extractYearFromFilename(filename) {
   if (!filename) return null;
   const match = filename.match(INDIVIDUAL_FILENAME_REGEX);
-  return match ? match[1] : null;
-  // Also try all-staff pattern
+  if (match) return match[1];
+  const legacy = filename.match(INDIVIDUAL_FILENAME_REGEX_LEGACY);
+  return legacy ? legacy[1] : null;
 }
 
 /**

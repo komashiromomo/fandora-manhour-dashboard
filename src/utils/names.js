@@ -1,8 +1,8 @@
 /**
  * 員工名稱、部門、IP 分類工具
  *
- * Bug B4 修復邏輯：同一人有 3+ 種名字
- * NICKNAME_TO_REAL + EMPLOYEE_DEPT_MAP 涵蓋所有變體
+ * 2026 起檔名與資料欄位均改用本名，NICKNAME_TO_REAL 僅作 2025 舊檔 fallback。
+ * Bug B4 修復邏輯：同一人有 3+ 種名字（保留處理機制）
  */
 
 import {
@@ -11,6 +11,7 @@ import {
   KNOWN_IP_LIST,
   ALL_STAFF_FILENAME_REGEX,
   INDIVIDUAL_FILENAME_REGEX,
+  INDIVIDUAL_FILENAME_REGEX_LEGACY,
 } from '../config/constants';
 
 /**
@@ -76,5 +77,6 @@ export function classifyFileType(filename) {
   if (!filename) return 'unknown';
   if (ALL_STAFF_FILENAME_REGEX.test(filename)) return 'allStaff';
   if (INDIVIDUAL_FILENAME_REGEX.test(filename)) return 'individual';
+  if (INDIVIDUAL_FILENAME_REGEX_LEGACY.test(filename)) return 'individual';
   return 'unknown';
 }

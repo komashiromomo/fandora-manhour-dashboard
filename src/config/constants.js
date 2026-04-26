@@ -26,34 +26,46 @@ export const LS_FOLDER_ID = 'gdrive_folder_id';
 export const LS_COST_SHEET_ID = 'gdrive_cost_sheet_id';
 export const LS_ACCESS_TOKEN = 'fandora_access_token';
 
-// ===== 暱稱 → 真名 =====
+// ===== 暱稱 → 真名（legacy fallback） =====
+// 2026 起檔名與資料欄位皆改用本名；保留此表只為相容 2025 年舊檔。
 export const NICKNAME_TO_REAL = {
   Kate: '余凱紓',
   Janet: '李宜臻',
   PAN: '潘美怡',
+  panpan: '潘美怡',
+  toto: '許茹津',
   茹津: '許茹津',
   敏佳: '陳敏佳',
+  minjia: '陳敏佳',
   阿溫: '劉蕙慈',
+  wendy: '劉蕙慈',
   Stacy: '陳姿羽',
   Kerry: '侯渝琪',
   小麥: '吳佳香',
+  michael: '吳佳香',
   妮佛: '陳敬文',
+  jennifer: '陳敬文',
   小智: '林宜萱',
+  sara: '林宜萱',
+  sophia: '陳孟華',
+  daniel: '陳勁宇',
 };
 
-// ===== 員工 → 部門 =====
+// ===== 員工 → 部門（來源：HR 組織表 Sheet 1W6OWQpMFB...） =====
 export const EMPLOYEE_DEPT_MAP = {
+  陳勁宇: '經營層',
   余凱紓: '後勤部',
-  李宜臻: '企劃部',
+  李宜臻: '授權企劃部',
   潘美怡: '後勤部',
   許茹津: '商品開發部',
-  劉蕙慈: '企劃部',
-  陳姿羽: '管理部',
-  侯渝琪: '商品商發部',
-  吳佳香: '銷售部',
-  陳敏佳: '企劃部',
+  劉蕙慈: '授權企劃部',
+  陳姿羽: '行政部',
+  侯渝琪: '商品開發部',
+  吳佳香: '數位行銷部',
+  陳敏佳: '視覺設計部',
   林宜萱: '後勤部',
-  陳敬文: '後勤部',
+  陳孟華: '管理部',
+  陳敬文: '實體行銷部',
 };
 
 // ===== 已知授權 IP =====
@@ -96,8 +108,12 @@ export const ALL_STAFF_DETAIL_SHEET = '明細總表';
 // ===== 檔名 pattern =====
 export const ALL_STAFF_FILENAME_REGEX =
   /Fandora工作日誌_(\d{4})年(\d{1,2})月/;
+// 新格式：工作日誌_2026年_余凱紓_後勤部
 export const INDIVIDUAL_FILENAME_REGEX =
-  /工作日誌_(\d{4})年_(.+)$/;
+  /工作日誌_(\d{4})年_([^_]+)_([^_.\s/]+)/;
+// 舊格式（2025 年以前）：工作日誌_2026年_Kate
+export const INDIVIDUAL_FILENAME_REGEX_LEGACY =
+  /工作日誌_(\d{4})年_(.+?)(?:\.[^.]+)?$/;
 export const MONTH_SHEET_REGEX = /^(\d{1,2})月$/;
 
 // ===== 要排除的 sheet =====

@@ -9,7 +9,7 @@
  * ⚠️ 已實裝所有 5 個 CRITICAL bug 修復邏輯
  */
 
-import { parseDateString, extractMonthFromFilename, extractNicknameFromFilename, extractYearFromFilename, extractMonthFromSheetName, roundHours } from './dates';
+import { parseDateString, extractMonthFromFilename, extractNameFromFilename, extractDeptFromFilename, extractYearFromFilename, extractMonthFromSheetName, roundHours } from './dates';
 import { normalizeName, getDept, classifyIP, classifyFileType } from './names';
 import { ALL_STAFF_DETAIL_SHEET, EXCLUDED_SHEETS, HOLIDAY_KEYWORDS, MONTH_SHEET_REGEX, INDIVIDUAL_TEMPLATE_TASKS } from '../config/constants';
 import * as XLSX from 'xlsx';
@@ -206,15 +206,17 @@ export function parsePivotSheet(workbook, sheetName, filename) {
  */
 export function parseIndividualSheets(workbook, filename) {
   try {
-    const nickname = extractNicknameFromFilename(filename);
+    const rawName = extractNameFromFilename(filename);
+    const filenameDept = extractDeptFromFilename(filename);
     const year = extractYearFromFilename(filename);
-    if (!nickname || !year) {
-      console.warn(`[parseIndividualSheets] 無法從檔名取得暱稱或年份: ${filename}`);
+    if (!rawName || !year) {
+      console.warn(`[parseIndividualSheets] 無法從檔名取得姓名或年份: ${filename}`);
       return [];
     }
 
-    const employee = normalizeName(nickname);
-    const department = getDept(employee);
+    // 新格式檔名直接帶本名與部門；舊格式仍走 normalizeName + EMPLOYEE_DEPT_MAP
+    const employee = normalizeName(rawName);
+    const department = filenameDept || getDept(employee);
 
     const logs = [];
 

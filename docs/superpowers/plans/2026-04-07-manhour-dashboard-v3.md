@@ -16,7 +16,7 @@
 | B1 | SheetJS 把時間小數（0.375）當成專案名稱 | `cellDates:true` 讓 SheetJS 誤解析 | **必須用 `cellDates:false`**，手動解析日期 |
 | B2 | Excel 日期序號（45358）顯示為部門名稱 | 序號被當成字串匹配 | **必須有 `parseDateValue()` 支援 5+ 種格式**：Excel serial、YYYY/MM/DD、M/D、2026/01/02（五） |
 | B3 | 接續列空白日期/姓名導致資料遺失 | Excel 省略重複的儲存格 | **必須有 carry-forward 機制**：追蹤上一列的值，空白時延續 |
-| B4 | 暱稱對不上部門 | 同一人有 3+ 種名字 | **NICKNAME_TO_REAL + EMPLOYEE_DEPT_MAP 必須涵蓋所有變體** |
+| B4 | 暱稱對不上部門 | 同一人有 3+ 種名字 | **NICKNAME_TO_REAL + EMPLOYEE_DEPT_MAP 必須涵蓋所有變體**（2026-04-26 起檔名與資料皆改用本名+部門，nickname map 退為 legacy fallback） |
 | B5 | 無法自訂日期範圍篩選 | 只有月份下拉 | **必須有 dateFrom/dateTo 篩選** |
 
 第一次開發的架構教訓：
@@ -142,20 +142,22 @@ fandora-manhour-dashboard/
     ├── 每月整理檔案/ (ID: 1frqH_VxDL2FEBLKNUVHaYY0b9CGIe1PE)
     │   ├── Fandora工作日誌_2026年01月 (ID: 1XXcf54ms_0RpIJnzPAc7n3DTziKJjbXaXeiK-l5nRrY) [32KB]
     │   └── Fandora工作日誌_2026年02月 (ID: 1M3nMSZCMSxwkm6b_1zkWfyGasSr6bDYAAGGEWrQf8q0) [12KB]
-    ├── 工作日誌_2026年_小麥 (ID: 1alsHhKQJNYxjX9jQNLUiUaiI1xh-xsh3f6Tx47Alpyg)
-    ├── 工作日誌_2026年_小智
-    ├── 工作日誌_2026年_妮佛
-    ├── 工作日誌_2026年_阿溫
-    ├── 工作日誌_2026年_茹津
-    ├── 工作日誌_2026年_敏佳
-    ├── 工作日誌_2026年_Janet
-    ├── 工作日誌_2026年_Kate
-    ├── 工作日誌_2026年_Kerry
-    ├── 工作日誌_2026年_PAN
-    └── 工作日誌_2026年_Stacy
+    ├── 工作日誌_2026年_余凱紓_後勤部 (ID: 1alsHhKQJNYxjX9jQNLUiUaiI1xh-xsh3f6Tx47Alpyg)
+    ├── 工作日誌_2026年_李宜臻_授權企劃部
+    ├── 工作日誌_2026年_潘美怡_後勤部
+    ├── 工作日誌_2026年_許茹津_商品開發部
+    ├── 工作日誌_2026年_劉蕙慈_授權企劃部
+    ├── 工作日誌_2026年_陳姿羽_行政部
+    ├── 工作日誌_2026年_侯渝琪_商品開發部
+    ├── 工作日誌_2026年_吳佳香_數位行銷部
+    ├── 工作日誌_2026年_陳敏佳_視覺設計部
+    ├── 工作日誌_2026年_林宜萱_後勤部
+    └── 工作日誌_2026年_陳敬文_實體行銷部
 ```
 
 所有檔案都是 **Google Sheets**（不是 .xlsx），需用 Google Sheets export endpoint 匯出為 xlsx 再解析。
+
+**2026-04-26 更新**：個人版檔名從 `工作日誌_YYYY年_暱稱` 改為 `工作日誌_YYYY年_本名_部門`；舊格式仍由 `INDIVIDUAL_FILENAME_REGEX_LEGACY` 容錯。組織表來源為 HR Sheet `1W6OWQpMFBZsBVyuekLzBe83I5se4_PbMlRQrnaqaSu8`。
 
 ### 全員工總表「2026_01」Pivot 交叉表 sheet（第一次開發發現的第三種格式）
 ```
@@ -359,13 +361,13 @@ POD商品   | 8.50   | 0.00   | 0.00   | ...
   - **parseIndividualSheet(buffer, filename)**：個人版工作日誌
     - 7 欄：日期|星期|授權IP|工作項目|工作開始|工作結束|實際時數
     - 每月一個 sheet（1月、2月...12月）
-    - 員工名從檔名取（extractNicknameFromFilename → normalizeName）
+    - 員工名與部門從檔名取（extractNameFromFilename / extractDeptFromFilename）；舊格式檔名（暱稱）走 normalizeName + getDept fallback
     - 日期格式 "3/2" → 搭配 sheet 名稱（3月）和檔名年份組成 YYYY-MM-DD
     - **前兩行是範本**：日期欄為空且有固定內容（全體例會/老高與小茉），需跳過
     - **授權IP 和工作項目直接從欄位取**（Phase 2 核心資料來源）
   - **parseWorkbook(buffer, filename)**：自動偵測檔案類型並分派
     - 檔名匹配 `Fandora工作日誌_YYYY年MM月` → allStaff（先找明細總表 sheet，沒有就用 Pivot）
-    - 檔名匹配 `工作日誌_YYYY年_暱稱` → individual
+    - 檔名匹配 `工作日誌_YYYY年_本名_部門`（新）或 `工作日誌_YYYY年_暱稱`（legacy） → individual
 - [ ] 4.2 建立 src/utils/salaryParser.js
   - parseSalarySheet(buffer)：解析薪資表
   - 靜默失敗：解析失敗回傳空陣列，不拋錯
