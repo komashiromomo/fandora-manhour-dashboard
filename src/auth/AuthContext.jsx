@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import {
   GOOGLE_CLIENT_ID, ALLOWED_DOMAIN, AUTH_STORAGE_KEY, DRIVE_READONLY_SCOPE,
-  DEFAULT_ROLE, LS_ACCESS_TOKEN,
+  DEFAULT_ROLE, LS_ACCESS_TOKEN, ADMIN_EMAILS,
 } from '../config/constants';
+import { fetchUserRole } from '../api/permissions';
 
 const AuthContext = createContext(null);
 
@@ -113,6 +114,23 @@ export function AuthProvider({ children }) {
     };
     waitForGIS();
   }, []);
+
+  // 解析使用者角色：先用 ADMIN_EMAILS 白名單，再 fallback 到 PERM_SHEET_ID 查表
+  useEffect(() => {
+    if (!authUser?.email) {
+      setRole(DEFAULT_ROLE);
+      return;
+    }
+    const email = authUser.email.toLowerCase();
+    if (ADMIN_EMAILS.map((e) => e.toLowerCase()).includes(email)) {
+      setRole('admin');
+      return;
+    }
+    if (!accessToken) return;
+    fetchUserRole(email, accessToken)
+      .then((r) => setRole(r))
+      .catch(() => setRole(DEFAULT_ROLE));
+  }, [authUser, accessToken]);
 
   const value = { authUser, isAuthenticated: !!authUser, isLoading, accessToken, role, renderSignInButton, logout, refreshToken };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -5,6 +5,8 @@ export const AUTH_STORAGE_KEY = 'fandora_auth_user';
 export const PERM_CACHE_KEY = 'fandora_perm_role';
 export const PERM_SHEET_ID = import.meta.env.VITE_PERM_SHEET_ID || '';
 export const DEFAULT_ROLE = 'member';
+// 預設管理員（不需 PERM_SHEET_ID 也能登入後拿 admin 角色）
+export const ADMIN_EMAILS = ['komashiro@fandora.co'];
 
 // ===== 資料來源 =====
 export const DEFAULT_API_KEY = import.meta.env.VITE_GDRIVE_API_KEY || '';
