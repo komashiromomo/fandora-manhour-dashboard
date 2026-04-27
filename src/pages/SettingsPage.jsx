@@ -5,6 +5,7 @@ import { useData } from '../data/DataContext';
 import { useDataLoader } from '../data/useDataLoader';
 import { useAuth } from '../auth/AuthContext';
 import DragDropUpload from '../components/DragDropUpload';
+import OrgManager from '../components/OrgManager';
 import {
   LS_API_KEY,
   LS_FOLDER_ID,
@@ -163,6 +164,13 @@ export default function SettingsPage() {
           </Col>
         </Row>
       </Card>
+
+      <Divider />
+
+      {/* 組織人員管理 */}
+      <div style={{ marginBottom: '24px' }}>
+        <OrgManager />
+      </div>
 
       <Divider />
 

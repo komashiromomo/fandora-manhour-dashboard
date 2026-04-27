@@ -10,7 +10,7 @@
  */
 
 import { parseDateString, extractMonthFromFilename, extractNameFromFilename, extractDeptFromFilename, extractYearFromFilename, extractMonthFromSheetName, roundHours } from './dates';
-import { normalizeName, getDept, classifyIP, classifyFileType } from './names';
+import { normalizeName, getDept, classifyIP, classifyFileType, splitNameWithDept } from './names';
 import { ALL_STAFF_DETAIL_SHEET, EXCLUDED_SHEETS, HOLIDAY_KEYWORDS, MONTH_SHEET_REGEX, INDIVIDUAL_TEMPLATE_TASKS } from '../config/constants';
 import * as XLSX from 'xlsx';
 
@@ -81,8 +81,20 @@ export function parseDetailSheet(workbook, sheetName, filename) {
       if (deptVal) lastDept = deptVal;
       if (dateVal) lastDate = dateVal;
 
-      const employee = lastEmployee ? normalizeName(lastEmployee) : '';
-      const dept = lastDept || (employee ? getDept(employee) : '未知部門');
+      // 員工姓名欄可能是「本名_部門」複合字串，要拆開
+      const { name: bareName, dept: nameDept } = splitNameWithDept(lastEmployee);
+      const employee = bareName ? normalizeName(bareName) : '';
+
+      // 部門優先序：EMPLOYEE_DEPT_MAP（含 overrides，最新組織表）→ 名字拆出的部門 → row 的部門 → 未知
+      let dept = '未知部門';
+      if (employee) {
+        const looked = getDept(employee);
+        if (looked && looked !== '未知部門') dept = looked;
+        else if (nameDept) dept = nameDept;
+        else if (lastDept) dept = lastDept;
+      } else if (nameDept) dept = nameDept;
+      else if (lastDept) dept = lastDept;
+
       const date = lastDate ? parseDateString(lastDate) : '';
 
       if (!employee || !date) continue;
@@ -156,15 +168,18 @@ export function parsePivotSheet(workbook, sheetName, filename) {
 
       // 遍歷每個員工（跳過第 0 欄 task name）
       for (let colIdx = 1; colIdx < headerRow.length; colIdx++) {
-        const employeeName = String(headerRow[colIdx] || '').trim();
-        if (!employeeName) continue;
+        const employeeRaw = String(headerRow[colIdx] || '').trim();
+        if (!employeeRaw) continue;
 
         const hoursVal = row[colIdx];
         const hours = roundHours(parseFloat(hoursVal));
         if (isNaN(hours) || hours === 0) continue;
 
-        const employee = normalizeName(employeeName);
-        const department = getDept(employee);
+        // header 也可能是「本名_部門」複合字串
+        const { name: bareName, dept: headerDept } = splitNameWithDept(employeeRaw);
+        const employee = normalizeName(bareName);
+        const looked = getDept(employee);
+        const department = (looked && looked !== '未知部門') ? looked : (headerDept || '未知部門');
         const ipProject = classifyIP(taskName);
 
         logs.push({

@@ -14,25 +14,77 @@ import {
   INDIVIDUAL_FILENAME_REGEX_LEGACY,
 } from '../config/constants';
 
-/**
- * 正規化員工名稱（暱稱 → 真名）
- * @param {string} name
- * @returns {string} 真名，或原名（如果沒有對應）
- */
-export function normalizeName(name) {
-  if (!name) return '';
-  const trimmed = String(name).trim();
-  return NICKNAME_TO_REAL[trimmed] || trimmed;
+// ===== 組織表 overrides（localStorage） =====
+const DEPT_OVERRIDES_KEY = 'fandora_emp_dept_overrides';
+let _deptOverridesCache = null;
+
+export function loadDeptOverrides() {
+  try {
+    const raw = localStorage.getItem(DEPT_OVERRIDES_KEY);
+    _deptOverridesCache = raw ? JSON.parse(raw) : {};
+  } catch {
+    _deptOverridesCache = {};
+  }
+  return _deptOverridesCache;
+}
+
+export function getDeptOverrides() {
+  if (_deptOverridesCache === null) loadDeptOverrides();
+  return _deptOverridesCache;
+}
+
+export function setDeptOverrides(map) {
+  _deptOverridesCache = map || {};
+  try {
+    localStorage.setItem(DEPT_OVERRIDES_KEY, JSON.stringify(_deptOverridesCache));
+  } catch (err) {
+    console.warn('[setDeptOverrides] localStorage 寫入失敗:', err.message);
+  }
+}
+
+/** code 預設組織表 + localStorage overrides 合併（overrides 優先） */
+export function getEffectiveDeptMap() {
+  return { ...EMPLOYEE_DEPT_MAP, ...getDeptOverrides() };
 }
 
 /**
- * 查詢員工部門
- * @param {string} realName - 真名
+ * 拆解「本名_部門」格式
+ * "陳敬文_實體行銷部" → { name: "陳敬文", dept: "實體行銷部" }
+ * "余凱紓"           → { name: "余凱紓", dept: null }
+ */
+export function splitNameWithDept(raw) {
+  if (!raw && raw !== 0) return { name: '', dept: null };
+  const str = String(raw).trim();
+  const idx = str.indexOf('_');
+  if (idx > 0 && idx < str.length - 1) {
+    return {
+      name: str.slice(0, idx).trim(),
+      dept: str.slice(idx + 1).trim() || null,
+    };
+  }
+  return { name: str, dept: null };
+}
+
+/**
+ * 正規化員工名稱（拆「_部門」後綴 + 暱稱 → 真名）
+ * @param {string} name
+ * @returns {string} 真名
+ */
+export function normalizeName(name) {
+  if (!name) return '';
+  const { name: bare } = splitNameWithDept(name);
+  return NICKNAME_TO_REAL[bare] || bare;
+}
+
+/**
+ * 查詢員工部門（含 localStorage overrides）
+ * @param {string} realName
  * @returns {string} 部門名稱 or '未知部門'
  */
 export function getDept(realName) {
   if (!realName) return '未知部門';
-  return EMPLOYEE_DEPT_MAP[realName] || '未知部門';
+  const map = getEffectiveDeptMap();
+  return map[realName] || '未知部門';
 }
 
 /**
