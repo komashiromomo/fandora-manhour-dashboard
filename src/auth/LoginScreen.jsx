@@ -57,7 +57,7 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (btnRef.current && GOOGLE_CLIENT_ID) {
-      renderSignInButton(btnRef.current);
+      renderSignInButton(btnRef);
     }
   }, [renderSignInButton]);
 
