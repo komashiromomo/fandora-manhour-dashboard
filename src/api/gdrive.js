@@ -15,7 +15,7 @@ export function getFolderId() {
 }
 
 /**
- * 列出資料夾中的檔案
+ * 列出資料夾中的檔案（支援 Shared Drive / 共用雲端硬碟）
  * @param {string} folderId
  * @param {string} accessToken - OAuth2 token
  * @returns {Promise<Array<{id, name, mimeType, size}>>}
@@ -24,7 +24,10 @@ export async function listFilesInFolder(folderId, accessToken) {
   const params = new URLSearchParams({
     q: `'${folderId}' in parents and trashed=false`,
     fields: 'files(id,name,mimeType,size)',
-    pageSize: '100',
+    pageSize: '1000',
+    supportsAllDrives: 'true',
+    includeItemsFromAllDrives: 'true',
+    corpora: 'allDrives',
   });
   const headers = accessToken
     ? { Authorization: `Bearer ${accessToken}` }
@@ -34,9 +37,18 @@ export async function listFilesInFolder(folderId, accessToken) {
     if (key) params.append('key', key);
   }
   const res = await fetch(`${GDRIVE_API_BASE}/files?${params}`, { headers });
-  if (!res.ok) throw new Error(`Drive API error: ${res.status}`);
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Drive API error: ${res.status} ${body.slice(0, 200)}`);
+  }
   const data = await res.json();
-  return data.files || [];
+  const files = data.files || [];
+  console.info(
+    `[listFilesInFolder] ${folderId}: ${files.length} 項 — ` +
+      files.slice(0, 5).map((f) => `${f.name}[${f.mimeType.replace('application/vnd.google-apps.', '')}]`).join(', ') +
+      (files.length > 5 ? ' ...' : '')
+  );
+  return files;
 }
 
 /**
@@ -47,8 +59,8 @@ export async function listFilesInFolder(folderId, accessToken) {
  */
 export async function listAllSpreadsheets(folderId, accessToken) {
   const files = await listFilesInFolder(folderId, accessToken);
-  let spreadsheets = files.filter(f => f.mimeType === GOOGLE_SHEETS_MIMETYPE);
-  const folders = files.filter(f => f.mimeType === GOOGLE_FOLDER_MIMETYPE);
+  let spreadsheets = files.filter((f) => f.mimeType === GOOGLE_SHEETS_MIMETYPE);
+  const folders = files.filter((f) => f.mimeType === GOOGLE_FOLDER_MIMETYPE);
   for (const folder of folders) {
     const subFiles = await listAllSpreadsheets(folder.id, accessToken);
     spreadsheets = spreadsheets.concat(subFiles);
