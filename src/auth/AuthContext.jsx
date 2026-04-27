@@ -132,7 +132,27 @@ export function AuthProvider({ children }) {
       .catch(() => setRole(DEFAULT_ROLE));
   }, [authUser, accessToken]);
 
-  const value = { authUser, isAuthenticated: !!authUser, isLoading, accessToken, role, renderSignInButton, logout, refreshToken };
+  // 已有 authUser 但 accessToken 缺失（從 localStorage 恢復 / token 過期）→ silent 補抓一次
+  useEffect(() => {
+    if (!authUser?.email || accessToken || !tokenClientRef.current) return;
+    try {
+      tokenClientRef.current.requestAccessToken({ prompt: '', hint: authUser.email });
+    } catch (err) {
+      console.warn('[Auth] silent token request failed:', err);
+    }
+  }, [authUser, accessToken]);
+
+  /** 顯式觸發 Drive 授權（user gesture 內呼叫） */
+  const requestDriveAccess = () => {
+    if (!tokenClientRef.current) return;
+    try {
+      tokenClientRef.current.requestAccessToken({ hint: authUser?.email });
+    } catch (err) {
+      console.warn('[Auth] requestDriveAccess failed:', err);
+    }
+  };
+
+  const value = { authUser, isAuthenticated: !!authUser, isLoading, accessToken, role, renderSignInButton, logout, refreshToken, requestDriveAccess };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
