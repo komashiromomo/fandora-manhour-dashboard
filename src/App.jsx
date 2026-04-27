@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AuthProvider, useAuth } from './auth/AuthContext';
-import { DataProvider } from './data/DataContext';
+import { DataProvider, useData } from './data/DataContext';
+import { useDataLoader } from './data/useDataLoader';
 import LoginScreen from './auth/LoginScreen';
 import Layout from './components/Layout';
 
@@ -11,6 +12,25 @@ import WorkTypePage from './pages/WorkTypePage';
 import EmployeePage from './pages/EmployeePage';
 import DepartmentPage from './pages/DepartmentPage';
 import SettingsPage from './pages/SettingsPage';
+
+/** 認證 + Drive token 都備齊且尚無資料時，自動拉一次 Drive */
+function AutoLoader() {
+  const { workLogs } = useData();
+  const { accessToken } = useAuth();
+  const { loadFromDrive } = useDataLoader();
+  const triggered = useRef(false);
+
+  useEffect(() => {
+    if (!accessToken || triggered.current) return;
+    if (workLogs.length > 0) return;
+    triggered.current = true;
+    loadFromDrive();
+    // 故意只依賴 accessToken：拿到 token 後觸發一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken]);
+
+  return null;
+}
 
 const PAGE_MAP = {
   overview: OverviewPage,
@@ -68,6 +88,7 @@ function AppContent() {
 
   return (
     <DataProvider>
+      <AutoLoader />
       <Layout activeTab={activeTab} onTabChange={setActiveTab}>
         <PageComponent />
       </Layout>

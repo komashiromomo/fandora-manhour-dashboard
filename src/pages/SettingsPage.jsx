@@ -63,7 +63,23 @@ export default function SettingsPage() {
   // Handle load from drive
   const handleLoadFromDrive = useCallback(async () => {
     handleSaveSettings();
-    await loadFromDrive();
+    const result = await loadFromDrive();
+    if (!result) return;
+    if (!result.ok) {
+      setTestStatus({ type: 'error', message: `載入失敗：${result.error || '未知錯誤'}` });
+      return;
+    }
+    if (result.individual === 0) {
+      setTestStatus({
+        type: 'warning',
+        message: `Drive 內共找到 ${result.total} 個 sheet，但沒有任何符合「個人版」格式（工作日誌_YYYY年_本名_部門 或舊暱稱）。請確認檔名。`,
+      });
+      return;
+    }
+    setTestStatus({
+      type: 'success',
+      message: `載入完成：${result.individual} 個個人版檔（共 ${result.total} 個）→ 解析 ${result.parsedFiles} 成功 / ${result.parseErrors} 失敗，共 ${result.logs} 筆工時記錄`,
+    });
   }, [handleSaveSettings, loadFromDrive]);
 
   // Handle clear all data

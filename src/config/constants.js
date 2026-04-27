@@ -10,7 +10,9 @@ export const ADMIN_EMAILS = ['komashiro@fandora.co'];
 
 // ===== 資料來源 =====
 export const DEFAULT_API_KEY = import.meta.env.VITE_GDRIVE_API_KEY || '';
-export const DEFAULT_FOLDER_ID = import.meta.env.VITE_GDRIVE_FOLDER_ID || '';
+// 工作日誌根目錄（Plan 文件記載的固定 ID；env 可覆蓋）
+export const DEFAULT_FOLDER_ID =
+  import.meta.env.VITE_GDRIVE_FOLDER_ID || '1X5MnrR-2goU5Jo4bQlxaaxv7ESzyceCo';
 export const DEFAULT_COST_SHEET_ID = import.meta.env.VITE_COST_SHEET_ID || '';
 export const GDRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 export const GDRIVE_EXPORT_MIMETYPE =
