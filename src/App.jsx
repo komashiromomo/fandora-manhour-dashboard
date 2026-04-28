@@ -7,6 +7,7 @@ import { useDataLoader } from './data/useDataLoader';
 import LoginScreen from './auth/LoginScreen';
 import Layout from './components/Layout';
 import { ThemeProvider } from './components/ThemeProvider';
+import TweaksPanel from './components/TweaksPanel';
 
 // Pages
 import OverviewPage from './pages/OverviewPage';
@@ -117,6 +118,7 @@ function AppContent() {
       <Layout activeTab={activeTab} onTabChange={setActiveTab}>
         <PageComponent />
       </Layout>
+      <TweaksPanel />
     </DataProvider>
   );
 }

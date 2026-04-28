@@ -73,7 +73,14 @@ export function AuthProvider({ children }) {
     });
   };
 
-  const refreshToken = () => {
+  /**
+   * 取得新 access token
+   * @param {object} opts
+   * @param {boolean} opts.force - true 用 prompt:'consent' 強制走授權視窗（拿全新 token）；
+   *                                false 用 silent flow（已授權使用者通常無感）
+   */
+  const refreshToken = (opts = {}) => {
+    const { force = false } = opts;
     return new Promise((resolve, reject) => {
       if (!tokenClientRef.current) { reject(new Error('Token client not ready')); return; }
       const originalCallback = tokenClientRef.current.callback;
@@ -85,10 +92,10 @@ export function AuthProvider({ children }) {
         tokenClientRef.current.callback = originalCallback;
         fn();
       };
-      // GIS silent flow 失敗時可能完全不 call callback，加 8 秒 timeout 防 hung
+      // silent flow 12 秒、force consent 30 秒（user 要時間同意視窗）
       const timer = setTimeout(
-        () => finish(() => reject(new Error('refreshToken timeout（GIS 沒回應，可能需要按「強制重新授權 Drive」）'))),
-        8000
+        () => finish(() => reject(new Error(`refreshToken timeout (force=${force})`))),
+        force ? 30000 : 12000
       );
       tokenClientRef.current.callback = (tokenResponse) => {
         if (tokenResponse?.access_token) {
@@ -102,7 +109,10 @@ export function AuthProvider({ children }) {
         }
       };
       try {
-        tokenClientRef.current.requestAccessToken();
+        tokenClientRef.current.requestAccessToken({
+          prompt: force ? 'consent' : '',
+          hint: authUser?.email,
+        });
       } catch (err) {
         finish(() => reject(err));
       }

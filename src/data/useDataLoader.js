@@ -70,13 +70,19 @@ export function useDataLoader() {
 
     let token = accessToken || localStorage.getItem(LS_ACCESS_TOKEN) || '';
 
+    // 兩段式 token recovery：401 → silent refresh → 失敗就 force consent
+    const tryRefresh = async (force) => {
+      console.info(`[loadFromDrive] refreshing token (force=${force})...`);
+      return await refreshToken({ force });
+    };
+
     try {
-      // 沒 token → 先 refresh 一次
       if (!token) {
         try {
-          token = await refreshToken();
-        } catch (err) {
-          return { ok: false, total: 0, individual: 0, skipped: 0, parsedFiles: 0, parseErrors: 0, logs: 0, error: '尚未授權 Drive，請按「重新授權 Drive」' };
+          token = await tryRefresh(false);
+        } catch {
+          // silent fail → force consent（仍在 user gesture 內，popup 通常允許）
+          token = await tryRefresh(true);
         }
       }
 
@@ -85,10 +91,16 @@ export function useDataLoader() {
         result = await runOnce(token);
       } catch (err) {
         if (!isAuthError(err)) throw err;
-        // 401 → refresh 後再跑一次
-        console.warn('[loadFromDrive] 401，refresh token 後重試...');
-        token = await refreshToken();
-        result = await runOnce(token);
+        // 401 第一次：silent refresh
+        try {
+          token = await tryRefresh(false);
+          result = await runOnce(token);
+        } catch (silentErr) {
+          // silent 也 401 / timeout → force consent，彈出 Google 授權視窗
+          console.warn('[loadFromDrive] silent refresh 失敗，改走 force consent');
+          token = await tryRefresh(true);
+          result = await runOnce(token);
+        }
       }
 
       setWorkLogs(result.allLogs);

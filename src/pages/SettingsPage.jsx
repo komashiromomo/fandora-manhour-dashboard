@@ -1,5 +1,10 @@
+/**
+ * 系統設定頁 — Fandora V2 設計風格
+ * 保留所有功能：Drive 設定、上傳、組織管理、資料統計、診斷面板、危險操作
+ */
 import { useState, useCallback } from 'react';
-import { Card, Input, Button, Space, Row, Col, Divider, Alert, Spin, Empty } from 'antd';
+import { Input, Button, Space, Alert, Spin } from 'antd';
+import { Card, Empty } from '../components/v2';
 import { testConnection, listAllSpreadsheets, listFilesInFolder, exportSheetAsXlsx } from '../api/gdrive';
 import { classifyFileType } from '../utils/names';
 import { extractMonthFromSheetName, parseDateString, excelDateToString } from '../utils/dates';
@@ -19,13 +24,12 @@ import {
 } from '../config/constants';
 
 export default function SettingsPage() {
-  const { workLogs, salaryData, isLoading, setLoading, clearAll } = useData();
+  const { workLogs, salaryData, isLoading, clearAll } = useData();
   const { loadFromDrive, handleWorkLogUpload, handleSalaryUpload } = useDataLoader();
   const { accessToken, requestDriveAccess, authUser, role } = useAuth();
   const [diagnostic, setDiagnostic] = useState(null);
   const [diagnosticLoading, setDiagnosticLoading] = useState(false);
 
-  // State for input fields
   const [apiKey, setApiKey] = useState(
     () => DEFAULT_API_KEY || localStorage.getItem(LS_API_KEY) || ''
   );
@@ -38,7 +42,6 @@ export default function SettingsPage() {
   const [testStatus, setTestStatus] = useState(null);
   const [testLoading, setTestLoading] = useState(false);
 
-  // Save settings to localStorage
   const handleSaveSettings = useCallback(() => {
     if (apiKey) localStorage.setItem(LS_API_KEY, apiKey);
     if (folderId) localStorage.setItem(LS_FOLDER_ID, folderId);
@@ -46,19 +49,15 @@ export default function SettingsPage() {
     setTestStatus({ type: 'success', message: '設定已保存' });
   }, [apiKey, folderId, costSheetId]);
 
-  // Test connection
   const handleTestConnection = useCallback(async () => {
     setTestLoading(true);
     try {
       const result = await testConnection(accessToken);
-      if (result) {
-        setTestStatus({
-          type: 'success',
-          message: '連線成功！',
-        });
-      } else {
-        setTestStatus({ type: 'error', message: '連線失敗，請檢查設定' });
-      }
+      setTestStatus(
+        result
+          ? { type: 'success', message: '連線成功！' }
+          : { type: 'error', message: '連線失敗，請檢查設定' }
+      );
     } catch (err) {
       setTestStatus({ type: 'error', message: err.message });
     } finally {
@@ -66,7 +65,6 @@ export default function SettingsPage() {
     }
   }, [accessToken]);
 
-  // Handle load from drive
   const handleLoadFromDrive = useCallback(async () => {
     handleSaveSettings();
     const result = await loadFromDrive();
@@ -88,7 +86,6 @@ export default function SettingsPage() {
     });
   }, [handleSaveSettings, loadFromDrive]);
 
-  // === Drive 診斷：實際打 Drive API，把 status / response body 直接顯示在頁面上 ===
   const handleDiagnose = useCallback(async () => {
     setDiagnosticLoading(true);
     const steps = [];
@@ -116,7 +113,6 @@ export default function SettingsPage() {
       },
     });
 
-    // 直接打 Drive API：取 root folder metadata（測權限）
     try {
       const url = `https://www.googleapis.com/drive/v3/files/${fid}?fields=id,name,mimeType,driveId,parents,owners(emailAddress),capabilities&supportsAllDrives=true`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${tk}` } });
@@ -128,7 +124,6 @@ export default function SettingsPage() {
       steps.push({ name: '3. Drive API: 取 Folder metadata', value: { error: err.message } });
     }
 
-    // 列 root folder 直接子項目
     try {
       const params = new URLSearchParams({
         q: `'${fid}' in parents and trashed=false`,
@@ -151,7 +146,11 @@ export default function SettingsPage() {
           status: res.status,
           file_count: Array.isArray(files) ? files.length : null,
           files: Array.isArray(files)
-            ? files.map((f) => ({ name: f.name, mimeType: f.mimeType.replace('application/vnd.google-apps.', ''), driveId: f.driveId || null }))
+            ? files.map((f) => ({
+                name: f.name,
+                mimeType: f.mimeType.replace('application/vnd.google-apps.', ''),
+                driveId: f.driveId || null,
+              }))
             : parsed,
         },
       });
@@ -159,7 +158,6 @@ export default function SettingsPage() {
       steps.push({ name: '4. Drive API: 列 Folder 子項目', value: { error: err.message } });
     }
 
-    // Step 5: 對 root folder 的每個 folder 子項目逐一展開一層
     try {
       const params = new URLSearchParams({
         q: `'${fid}' in parents and trashed=false`,
@@ -181,7 +179,10 @@ export default function SettingsPage() {
           expansions.push({
             folder: sub.name,
             count: inner.length,
-            items: inner.map((f) => ({ name: f.name, mimeType: f.mimeType.replace('application/vnd.google-apps.', '') })),
+            items: inner.map((f) => ({
+              name: f.name,
+              mimeType: f.mimeType.replace('application/vnd.google-apps.', ''),
+            })),
           });
         } catch (err) {
           expansions.push({ folder: sub.name, error: err.message });
@@ -192,17 +193,13 @@ export default function SettingsPage() {
       steps.push({ name: '5. 子 folder 展開', value: { error: err.message } });
     }
 
-    // Step 6: 直接呼叫 listAllSpreadsheets，dump 所有 sheet 與 classifyFileType 結果
     try {
       const allSheets = await listAllSpreadsheets(fid, tk);
       steps.push({
         name: '6. listAllSpreadsheets 整棵樹遞迴結果',
         value: {
           total_sheets: allSheets.length,
-          sheets: allSheets.map((f) => ({
-            name: f.name,
-            classified: classifyFileType(f.name),
-          })),
+          sheets: allSheets.map((f) => ({ name: f.name, classified: classifyFileType(f.name) })),
           summary_by_classification: allSheets.reduce((acc, f) => {
             const k = classifyFileType(f.name);
             acc[k] = (acc[k] || 0) + 1;
@@ -214,7 +211,6 @@ export default function SettingsPage() {
       steps.push({ name: '6. listAllSpreadsheets', value: { error: err.message } });
     }
 
-    // Step 7: 對第一個 individual file 實際 export + 看 sheet 結構
     try {
       const allSheets = await listAllSpreadsheets(fid, tk);
       const individualFiles = allSheets.filter((f) => classifyFileType(f.name) === 'individual');
@@ -225,8 +221,6 @@ export default function SettingsPage() {
         const buffer = await exportSheetAsXlsx(file.id, tk);
         const wb = XLSX.read(buffer, { cellDates: false });
         const sheetNames = wb.SheetNames;
-
-        // 抓前 3 個 sheet 的前 6 row 內容
         const samples = sheetNames.slice(0, 3).map((name) => {
           const ws = wb.Sheets[name];
           const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
@@ -239,22 +233,15 @@ export default function SettingsPage() {
             ),
           };
         });
-
         steps.push({
           name: '7. 第一個 individual file 結構',
-          value: {
-            filename: file.name,
-            sheetCount: sheetNames.length,
-            sheetNames,
-            samples,
-          },
+          value: { filename: file.name, sheetCount: sheetNames.length, sheetNames, samples },
         });
       }
     } catch (err) {
       steps.push({ name: '7. Export 結構', value: { error: err.message } });
     }
 
-    // Step 8: parseDateString 對各種輸入的實際輸出（驗證日期解析本身有沒有壞）
     try {
       steps.push({
         name: '8. parseDateString 行為驗證',
@@ -275,7 +262,6 @@ export default function SettingsPage() {
       steps.push({ name: '8. parseDateString', value: { error: err.message } });
     }
 
-    // Step 9: 直接在 production runtime 跑 parseWorkbook，dump 實際 logs（前 3 筆）
     try {
       const allSheets = await listAllSpreadsheets(fid, tk);
       const individualFiles = allSheets.filter((f) => classifyFileType(f.name) === 'individual');
@@ -309,7 +295,6 @@ export default function SettingsPage() {
     setDiagnosticLoading(false);
   }, [accessToken, authUser, role, folderId, apiKey, costSheetId]);
 
-  // Handle clear all data
   const handleClearAll = useCallback(() => {
     if (window.confirm('確定要清除所有資料嗎？此操作無法復原。')) {
       clearAll();
@@ -318,41 +303,76 @@ export default function SettingsPage() {
   }, [clearAll]);
 
   return (
-    <div style={{ padding: '24px', maxWidth: 1000 }}>
-      {/* Google Drive Settings */}
-      <Card title="Google Drive 設定" style={{ marginBottom: '24px' }}>
-        <Row gutter={[16, 16]}>
-          <Col xs={24}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-              API Key
-            </label>
-            <Input
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="輸入 Google Drive API Key"
-            />
-          </Col>
-          <Col xs={24}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-              Folder ID
-            </label>
-            <Input
-              value={folderId}
-              onChange={(e) => setFolderId(e.target.value)}
-              placeholder="輸入 Google Drive Folder ID"
-            />
-          </Col>
-          <Col xs={24}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-              Cost Sheet ID
-            </label>
-            <Input
-              value={costSheetId}
-              onChange={(e) => setCostSheetId(e.target.value)}
-              placeholder="輸入薪資表 Google Sheets ID"
-            />
-          </Col>
-          <Col xs={24}>
+    <>
+      <div className="hero-decor" />
+      <div className="page-hero">
+        <div>
+          <div className="eyebrow">SETTINGS</div>
+          <h1>系統設定</h1>
+          <p className="sub">
+            管理 Google Drive 連線、組織人員、資料載入與權限設定。
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-12">
+        {/* Drive 設定 */}
+        <Card col={12} title="Google Drive 設定" sub="連線到工作日誌資料夾與薪資表">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: 6,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--fg-2)',
+                }}
+              >
+                API Key
+              </label>
+              <Input
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Google Drive API Key"
+              />
+            </div>
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: 6,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--fg-2)',
+                }}
+              >
+                Folder ID
+              </label>
+              <Input
+                value={folderId}
+                onChange={(e) => setFolderId(e.target.value)}
+                placeholder="工作日誌資料夾 ID"
+              />
+            </div>
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: 6,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--fg-2)',
+                }}
+              >
+                Cost Sheet ID
+              </label>
+              <Input
+                value={costSheetId}
+                onChange={(e) => setCostSheetId(e.target.value)}
+                placeholder="薪資表 Sheet ID"
+              />
+            </div>
             <Space wrap>
               <Button type="primary" onClick={handleSaveSettings}>
                 保存設定
@@ -367,129 +387,178 @@ export default function SettingsPage() {
                 強制重新授權 Drive
               </Button>
             </Space>
-            <div style={{ marginTop: 8, fontSize: 12, color: '#888' }}>
-              載入失敗（出現 401）時請按「強制重新授權 Drive」，會彈出 Google 授權視窗，
-              同意後 token 會被重置成全新的；接著再點「從 Drive 載入」即可。
+            <div style={{ fontSize: 12, color: 'var(--fg-3)', lineHeight: 1.6 }}>
+              載入失敗（401）時請按「強制重新授權 Drive」彈出 Google 授權視窗，
+              同意後 token 重置為全新；接著再點「從 Drive 載入」即可。
             </div>
-          </Col>
-          {testStatus && (
-            <Col xs={24}>
+            {testStatus && (
               <Alert
                 message={testStatus.message}
                 type={testStatus.type}
                 closable
                 onClose={() => setTestStatus(null)}
+                style={{ borderRadius: 10 }}
               />
-            </Col>
-          )}
-        </Row>
-      </Card>
-
-      <Divider />
-
-      {/* File Upload */}
-      <Card title="上傳資料" style={{ marginBottom: '24px' }}>
-        <Row gutter={[16, 16]}>
-          <Col xs={24} lg={12}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-              上傳工時檔案（Excel）
-            </label>
-            <DragDropUpload
-              onUpload={handleWorkLogUpload}
-              accept=".xlsx,.xls"
-              multiple
-              disabled={isLoading}
-            />
-          </Col>
-          <Col xs={24} lg={12}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-              上傳薪資表（Excel）
-            </label>
-            <DragDropUpload
-              onUpload={handleSalaryUpload}
-              accept=".xlsx,.xls"
-              multiple={false}
-              disabled={isLoading}
-            />
-          </Col>
-        </Row>
-      </Card>
-
-      <Divider />
-
-      {/* 組織人員管理 */}
-      <div style={{ marginBottom: '24px' }}>
-        <OrgManager />
-      </div>
-
-      <Divider />
-
-      {/* Data Statistics */}
-      <Card title="資料統計" style={{ marginBottom: '24px' }}>
-        {isLoading ? (
-          <Spin />
-        ) : workLogs.length === 0 && salaryData.length === 0 ? (
-          <Empty description="暫無資料" />
-        ) : (
-          <Row gutter={[16, 16]}>
-            <Col xs={24} sm={12}>
-              <div style={{ padding: '12px', background: '#fafafa', borderRadius: '4px' }}>
-                <div style={{ fontSize: '12px', color: '#666' }}>工時記錄筆數</div>
-                <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
-                  {workLogs.length}
-                </div>
-              </div>
-            </Col>
-            <Col xs={24} sm={12}>
-              <div style={{ padding: '12px', background: '#fafafa', borderRadius: '4px' }}>
-                <div style={{ fontSize: '12px', color: '#666' }}>薪資記錄筆數</div>
-                <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
-                  {salaryData.length}
-                </div>
-              </div>
-            </Col>
-          </Row>
-        )}
-      </Card>
-
-      {/* Drive 診斷 */}
-      <Card title="Drive 診斷（debug）" style={{ marginBottom: '24px', borderColor: '#1890ff' }}>
-        <Space direction="vertical" style={{ width: '100%' }}>
-          <Button type="primary" loading={diagnosticLoading} onClick={handleDiagnose}>
-            執行完整診斷
-          </Button>
-          <div style={{ fontSize: 12, color: '#888' }}>
-            按下會直接打 Drive API（取 folder metadata + 列子項目），把實際 status/response 顯示在下方，方便定位「為什麼讀不到資料」。
+            )}
           </div>
-          {diagnostic && (
-            <pre
-              style={{
-                background: '#0a0a0a',
-                color: '#d4d4d4',
-                padding: 16,
-                borderRadius: 4,
-                fontSize: 12,
-                lineHeight: 1.5,
-                overflow: 'auto',
-                maxHeight: 600,
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-              }}
-            >
-              {diagnostic
-                .map((s) => `=== ${s.name} ===\n${JSON.stringify(s.value, null, 2)}`)
-                .join('\n\n')}
-            </pre>
-          )}
-        </Space>
-      </Card>
+        </Card>
 
-      {/* Danger Zone */}
-      <Card title="危險操作" style={{ borderColor: '#ff4d4f' }}>
-        <Button danger onClick={handleClearAll}>
-          清除所有數據
-        </Button>
-      </Card>
-    </div>
+        {/* 上傳資料 */}
+        <Card col={12} title="上傳資料" sub="手動上傳 Excel 工時或薪資檔">
+          <div className="grid grid-2">
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: 8,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--fg-2)',
+                }}
+              >
+                工時檔案（個人版 Excel）
+              </label>
+              <DragDropUpload
+                onUpload={handleWorkLogUpload}
+                accept=".xlsx,.xls"
+                multiple
+                disabled={isLoading}
+              />
+            </div>
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: 8,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--fg-2)',
+                }}
+              >
+                薪資表（Excel）
+              </label>
+              <DragDropUpload
+                onUpload={handleSalaryUpload}
+                accept=".xlsx,.xls"
+                multiple={false}
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+        </Card>
+
+        {/* 組織人員管理 */}
+        <Card col={12} title="組織人員管理" sub="員工 ↔ 部門對照（可覆寫硬編碼）">
+          <OrgManager />
+        </Card>
+
+        {/* 資料統計 */}
+        <Card col={12} title="資料統計">
+          {isLoading ? (
+            <Spin />
+          ) : workLogs.length === 0 && salaryData.length === 0 ? (
+            <Empty title="暫無資料" desc="按上方「從 Drive 載入」或拖檔上傳。" />
+          ) : (
+            <div className="grid grid-2">
+              <div
+                style={{
+                  padding: 16,
+                  background: 'var(--bg-page-alt)',
+                  borderRadius: 10,
+                }}
+              >
+                <div style={{ fontSize: 11, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '.08em', fontFamily: 'var(--font-latin)', fontWeight: 600 }}>
+                  工時記錄筆數
+                </div>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-numeric)',
+                    fontSize: 32,
+                    fontWeight: 700,
+                    color: 'var(--accent)',
+                    marginTop: 4,
+                  }}
+                >
+                  {workLogs.length.toLocaleString()}
+                </div>
+              </div>
+              <div
+                style={{
+                  padding: 16,
+                  background: 'var(--bg-page-alt)',
+                  borderRadius: 10,
+                }}
+              >
+                <div style={{ fontSize: 11, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '.08em', fontFamily: 'var(--font-latin)', fontWeight: 600 }}>
+                  薪資記錄筆數
+                </div>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-numeric)',
+                    fontSize: 32,
+                    fontWeight: 700,
+                    color: 'var(--fg-1)',
+                    marginTop: 4,
+                  }}
+                >
+                  {salaryData.length.toLocaleString()}
+                </div>
+              </div>
+            </div>
+          )}
+        </Card>
+
+        {/* Drive 診斷 */}
+        <Card col={12} title="Drive 診斷（debug）" sub="實際打 Drive API + 跑 parser，把 status / response 直接顯示">
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <div>
+              <Button type="primary" loading={diagnosticLoading} onClick={handleDiagnose}>
+                執行完整診斷
+              </Button>
+            </div>
+            {diagnostic && (
+              <pre
+                style={{
+                  background: '#0a0a0a',
+                  color: '#d4d4d4',
+                  padding: 16,
+                  borderRadius: 10,
+                  fontSize: 12,
+                  lineHeight: 1.5,
+                  overflow: 'auto',
+                  maxHeight: 600,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  fontFamily: 'var(--font-mono)',
+                }}
+              >
+                {diagnostic
+                  .map((s) => `=== ${s.name} ===\n${JSON.stringify(s.value, null, 2)}`)
+                  .join('\n\n')}
+              </pre>
+            )}
+          </Space>
+        </Card>
+
+        {/* 危險操作 */}
+        <Card col={12} title="危險操作" className="card" >
+          <div
+            style={{
+              padding: 16,
+              background: 'rgba(225,77,77,0.05)',
+              border: '1px solid rgba(225,77,77,0.2)',
+              borderRadius: 10,
+            }}
+          >
+            <div style={{ fontSize: 13, color: 'var(--fg-2)', marginBottom: 12 }}>
+              清除所有快取資料（包含 localStorage 內的 workLogs / salaryData）。下次需要重新從 Drive 載入。
+            </div>
+            <Button danger onClick={handleClearAll}>
+              清除所有數據
+            </Button>
+          </div>
+        </Card>
+      </div>
+    </>
   );
 }
