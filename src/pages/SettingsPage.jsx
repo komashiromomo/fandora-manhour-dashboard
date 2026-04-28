@@ -80,9 +80,10 @@ export default function SettingsPage() {
       });
       return;
     }
+    const salaryMsg = result.salaryCount > 0 ? `；薪資表 ${result.salaryCount} 筆` : '；薪資表未載入（請確認 Cost Sheet ID 正確且有「姓名」「月薪」欄位）';
     setTestStatus({
       type: 'success',
-      message: `載入完成：${result.individual} 個個人版檔（共 ${result.total} 個）→ 解析 ${result.parsedFiles} 成功 / ${result.parseErrors} 失敗，共 ${result.logs} 筆工時記錄`,
+      message: `載入完成：${result.individual} 個個人版檔（共 ${result.total} 個）→ 解析 ${result.parsedFiles} 成功 / ${result.parseErrors} 失敗，共 ${result.logs} 筆工時記錄${salaryMsg}`,
     });
   }, [handleSaveSettings, loadFromDrive]);
 

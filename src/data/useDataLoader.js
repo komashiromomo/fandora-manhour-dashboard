@@ -5,7 +5,10 @@ import { listAllSpreadsheets, exportSheetAsXlsx, getFolderId } from '../api/gdri
 import { parseWorkbook } from '../utils/excelParser';
 import { parseSalarySheet } from '../utils/salaryParser';
 import { classifyFileType } from '../utils/names';
-import { LS_ACCESS_TOKEN } from '../config/constants';
+import { LS_ACCESS_TOKEN, LS_COST_SHEET_ID, DEFAULT_COST_SHEET_ID } from '../config/constants';
+
+const getCostSheetId = () =>
+  DEFAULT_COST_SHEET_ID || localStorage.getItem(LS_COST_SHEET_ID) || '';
 
 const isAuthError = (err) =>
   /401|invalid[_ ]?token|invalid authentication|UNAUTHENTICATED/i.test(String(err?.message || err));
@@ -104,14 +107,37 @@ export function useDataLoader() {
       }
 
       setWorkLogs(result.allLogs);
-      return result.stats;
+
+      // 跟著載入 Cost Sheet（薪資表）— 失敗不中斷主流程
+      const costSheetId = getCostSheetId();
+      let salaryCount = 0;
+      if (costSheetId) {
+        try {
+          setLoading(true, '正在載入薪資表...');
+          const buffer = await exportSheetAsXlsx(costSheetId, token);
+          const records = parseSalarySheet(buffer);
+          if (records.length > 0) {
+            setSalaryData(records);
+            salaryCount = records.length;
+            console.info(`[loadFromDrive] cost sheet 載入 ${records.length} 筆薪資`);
+          } else {
+            console.warn('[loadFromDrive] cost sheet 解析回 0 筆（找不到「姓名」+「月薪」header？）');
+          }
+        } catch (err) {
+          console.warn('[loadFromDrive] cost sheet 載入失敗:', err.message);
+        }
+      } else {
+        console.info('[loadFromDrive] 未設定 Cost Sheet ID，跳過薪資載入');
+      }
+
+      return { ...result.stats, salaryCount };
     } catch (err) {
       console.error('Drive 載入失敗:', err);
-      return { ok: false, total: 0, individual: 0, skipped: 0, parsedFiles: 0, parseErrors: 0, logs: 0, error: err?.message || String(err) };
+      return { ok: false, total: 0, individual: 0, skipped: 0, parsedFiles: 0, parseErrors: 0, logs: 0, salaryCount: 0, error: err?.message || String(err) };
     } finally {
       setLoading(false);
     }
-  }, [accessToken, refreshToken, setWorkLogs, setLoading]);
+  }, [accessToken, refreshToken, setWorkLogs, setSalaryData, setLoading]);
 
   /** 手動上傳工時 Excel（同樣只接受個人版） */
   const handleWorkLogUpload = useCallback(async (fileList) => {
