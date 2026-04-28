@@ -1,9 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { ConfigProvider } from 'antd';
+import zhTW from 'antd/locale/zh_TW';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { DataProvider, useData } from './data/DataContext';
 import { useDataLoader } from './data/useDataLoader';
 import LoginScreen from './auth/LoginScreen';
 import Layout from './components/Layout';
+import { ThemeProvider } from './components/ThemeProvider';
 
 // Pages
 import OverviewPage from './pages/OverviewPage';
@@ -65,13 +68,35 @@ class ErrorBoundary extends React.Component {
 
 function LoadingScreen() {
   return (
-    <div style={{
-      display: 'flex', justifyContent: 'center', alignItems: 'center',
-      height: '100vh', background: '#f5f5f5',
-    }}>
+    <div
+      style={{
+        display: 'grid',
+        placeItems: 'center',
+        height: '100vh',
+        background: 'var(--bg-page-alt, #F2F5FA)',
+      }}
+    >
       <div style={{ textAlign: 'center' }}>
-        <h1 style={{ fontSize: 28, color: '#1a1a2e' }}>Fandora 人工時管理系統</h1>
-        <p style={{ color: '#666', marginTop: 8 }}>載入中...</p>
+        <div
+          style={{
+            width: 56,
+            height: 56,
+            margin: '0 auto 20px',
+            borderRadius: 14,
+            background: 'var(--accent, #00A4C6)',
+            color: '#fff',
+            display: 'grid',
+            placeItems: 'center',
+            fontFamily: 'var(--font-numeric)',
+            fontWeight: 800,
+            fontSize: 24,
+            boxShadow: 'var(--shadow-brand)',
+            animation: 'pulse 2s infinite',
+          }}
+        >
+          F
+        </div>
+        <div style={{ fontSize: 14, color: 'var(--fg-3, #595959)' }}>載入中…</div>
       </div>
     </div>
   );
@@ -96,12 +121,36 @@ function AppContent() {
   );
 }
 
+// Ant Design v5 token，把 Fandora cyan 作為 primary 顏色注入
+const ANTD_THEME = {
+  token: {
+    colorPrimary: '#00A4C6',
+    colorInfo: '#00A4C6',
+    colorSuccess: '#2BB673',
+    colorWarning: '#F2994A',
+    colorError: '#E14D4D',
+    colorTextBase: '#0B111F',
+    colorBgBase: '#FFFFFF',
+    borderRadius: 10,
+    fontFamily:
+      '"Noto Sans TC", "Noto Sans", "Microsoft JhengHei", "PingFang TC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  },
+  components: {
+    Button: { borderRadius: 10, controlHeight: 36 },
+    Card: { borderRadiusLG: 14 },
+  },
+};
+
 export default function App() {
   return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </ErrorBoundary>
+    <ConfigProvider locale={zhTW} theme={ANTD_THEME}>
+      <ThemeProvider>
+        <ErrorBoundary>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </ErrorBoundary>
+      </ThemeProvider>
+    </ConfigProvider>
   );
 }

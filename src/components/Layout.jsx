@@ -1,107 +1,193 @@
+/**
+ * V2 Layout — 來自 Fandora design bundle
+ * - 左側欄（可收合）含品牌標識、分組導覽、使用者資訊
+ * - 上方 header：crumb + 標題 + 即時同步指示 + 重新整理 + 收合鈕
+ * - 內容區包 .content（沿用 design 的 content padding / hero-decor）
+ * - 不再使用 Ant Design Layout / Tabs（避免雙套 chrome）
+ */
 import React, { useState } from 'react';
-import {
-  Layout as AntLayout, Tabs, Avatar, Dropdown, Button, Spin, Space,
-} from 'antd';
-import { UserOutlined, LogoutOutlined } from '@ant-design/icons';
+import { Spin, Dropdown } from 'antd';
+import Icon from './Icon';
 import { useAuth } from '../auth/AuthContext';
 import { useData } from '../data/DataContext';
-import { ROLE_TABS, TAB_DEFINITIONS } from '../config/constants';
+import { useTheme } from './ThemeProvider';
+import { ROLE_TABS } from '../config/constants';
 
-const { Header, Content } = AntLayout;
+// 把當前 dashboard 的 page id 對應到 design 的 nav 設計
+const NAV_ITEMS = [
+  { id: 'overview', label: '總覽', icon: 'home', section: 'analytics' },
+  { id: 'projects', label: '專案', icon: 'project', section: 'analytics' },
+  { id: 'workTypes', label: '工時類型', icon: 'worktype', section: 'analytics' },
+  { id: 'employees', label: '人員', icon: 'employee', section: 'analytics' },
+  { id: 'departments', label: '部門', icon: 'department', section: 'analytics' },
+  { id: 'settings', label: '設定', icon: 'settings', section: 'system' },
+];
+
+const PAGE_TITLES = {
+  overview: { title: '總覽', crumb: 'OVERVIEW' },
+  projects: { title: '專案分析', crumb: 'PROJECTS' },
+  workTypes: { title: '工時類型', crumb: 'WORK TYPES' },
+  employees: { title: '人員分析', crumb: 'PEOPLE' },
+  departments: { title: '部門分析', crumb: 'DEPARTMENTS' },
+  settings: { title: '系統設定', crumb: 'SETTINGS' },
+};
+
+function Sidebar({ active, onNav, collapsed, onToggle, role, authUser, onLogout }) {
+  const visibleIds = ROLE_TABS[role] || ROLE_TABS.member;
+  const items = NAV_ITEMS.filter((n) => visibleIds.includes(n.id));
+  const analytics = items.filter((n) => n.section === 'analytics');
+  const system = items.filter((n) => n.section === 'system');
+
+  const userMenu = {
+    items: [
+      { key: 'logout', icon: <Icon name="logout" size={14} />, label: '登出', onClick: onLogout },
+    ],
+  };
+
+  const initial = (authUser?.name || authUser?.email || 'U').slice(0, 1).toUpperCase();
+
+  return (
+    <aside className="sidebar">
+      <div className="sb-brand">
+        <div className="sb-brand-mark">F</div>
+        {!collapsed && (
+          <div className="sb-brand-text">
+            <b>人工時系統</b>
+            <small>FANDORA · V3</small>
+          </div>
+        )}
+      </div>
+      <nav className="sb-nav">
+        {!collapsed && analytics.length > 0 && <div className="sb-section">分析</div>}
+        {analytics.map((n) => (
+          <div
+            key={n.id}
+            className={`sb-item ${active === n.id ? 'active' : ''}`}
+            onClick={() => onNav(n.id)}
+            title={n.label}
+          >
+            <span className="ic"><Icon name={n.icon} /></span>
+            <span className="lbl">{n.label}</span>
+          </div>
+        ))}
+        {!collapsed && system.length > 0 && <div className="sb-section">系統</div>}
+        {system.map((n) => (
+          <div
+            key={n.id}
+            className={`sb-item ${active === n.id ? 'active' : ''}`}
+            onClick={() => onNav(n.id)}
+            title={n.label}
+          >
+            <span className="ic"><Icon name={n.icon} /></span>
+            <span className="lbl">{n.label}</span>
+          </div>
+        ))}
+      </nav>
+      <div className="sb-foot">
+        <Dropdown menu={userMenu} trigger={['click']} placement="topLeft">
+          <div className="sb-user" title={collapsed ? authUser?.email : '帳號選單'}>
+            {authUser?.picture ? (
+              <img
+                src={authUser.picture}
+                alt={authUser.name}
+                className="sb-avatar"
+                style={{ objectFit: 'cover' }}
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="sb-avatar">{initial}</div>
+            )}
+            <div className="sb-user-info">
+              <b>{authUser?.name || authUser?.email || '未登入'}</b>
+              <small>{role === 'admin' ? '管理員 · admin' : '一般成員 · member'}</small>
+            </div>
+          </div>
+        </Dropdown>
+        <div
+          className="sb-item"
+          onClick={onToggle}
+          title="切換側欄"
+          style={{ marginTop: 6, justifyContent: collapsed ? 'center' : 'flex-start' }}
+        >
+          <span className="ic">
+            <Icon name={collapsed ? 'chevronRight' : 'chevronLeft'} size={16} />
+          </span>
+          <span className="lbl">收合側欄</span>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function Header({ title, crumb, onCollapse, onRefresh }) {
+  return (
+    <div className="header">
+      <button className="icon-btn" onClick={onCollapse} title="切換側欄">
+        <Icon name="chevronLeft" size={16} />
+      </button>
+      <div className="header-title">
+        {crumb && <span className="crumb">{crumb}</span>}
+        <h1>{title}</h1>
+      </div>
+      <div className="grow" />
+      <div className="live-pulse">即時同步</div>
+      <button className="icon-btn" title="重新整理" onClick={onRefresh}>
+        <Icon name="refresh" size={16} />
+      </button>
+    </div>
+  );
+}
 
 export default function Layout({ children, activeTab, onTabChange }) {
   const { authUser, role, logout } = useAuth();
   const { isLoading, loadingMessage } = useData();
+  const { collapsed, setTweak } = useTheme();
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Filter tabs based on user role
-  const visibleTabs = TAB_DEFINITIONS.filter(t =>
-    (ROLE_TABS[role] || ROLE_TABS.member).includes(t.id)
-  );
-
-  // User menu dropdown
-  const userMenuItems = [
-    {
-      key: 'logout',
-      icon: <LogoutOutlined />,
-      label: '登出',
-      onClick: logout,
-    },
-  ];
+  const meta = PAGE_TITLES[activeTab] || PAGE_TITLES.overview;
 
   return (
-    <AntLayout style={{ minHeight: '100vh' }}>
-      {/* Header */}
-      <Header
-        style={{
-          background: '#1a1a2e',
-          color: '#fff',
-          padding: '0 24px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}
-      >
-        <div style={{ fontSize: 18, fontWeight: 'bold' }}>
-          Fandora 人工時管理系統 v3
-        </div>
-        {authUser && (
-          <Space>
-            <span>{authUser.name || authUser.email}</span>
-            <Dropdown menu={{ items: userMenuItems }} trigger={['click']}>
-              <Avatar
-                icon={<UserOutlined />}
-                src={authUser.picture}
-                style={{ cursor: 'pointer' }}
-              />
-            </Dropdown>
-          </Space>
-        )}
-      </Header>
-
-      {/* Tabs */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #f0f0f0' }}>
-        <Tabs
-          activeKey={activeTab}
-          onChange={onTabChange}
-          items={visibleTabs.map(tab => ({
-            key: tab.id,
-            label: tab.label,
-          }))}
-          style={{ margin: 0, paddingLeft: 24 }}
+    <div className="app" data-collapsed={collapsed}>
+      <Sidebar
+        active={activeTab}
+        onNav={onTabChange}
+        collapsed={collapsed}
+        onToggle={() => setTweak('collapsed', !collapsed)}
+        role={role}
+        authUser={authUser}
+        onLogout={logout}
+      />
+      <div className="main">
+        <Header
+          title={meta.title}
+          crumb={meta.crumb}
+          onCollapse={() => setTweak('collapsed', !collapsed)}
+          onRefresh={() => setRefreshKey((k) => k + 1)}
         />
+        <div className="content" key={refreshKey}>
+          {children}
+          {isLoading && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(11, 17, 31, 0.55)',
+                backdropFilter: 'blur(4px)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: 1000,
+              }}
+            >
+              <Spin size="large" />
+              {loadingMessage && (
+                <p style={{ color: '#fff', marginTop: 16, fontSize: 14 }}>{loadingMessage}</p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-
-      {/* Content */}
-      <Content
-        style={{
-          padding: 24,
-          position: 'relative',
-        }}
-      >
-        {children}
-        {isLoading && (
-          <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0, 0, 0, 0.45)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center',
-              zIndex: 1000,
-            }}
-          >
-            <Spin size="large" />
-            {loadingMessage && (
-              <p style={{ color: '#fff', marginTop: 16 }}>{loadingMessage}</p>
-            )}
-          </div>
-        )}
-      </Content>
-    </AntLayout>
+    </div>
   );
 }
