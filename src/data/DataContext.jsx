@@ -2,9 +2,33 @@ import React, { createContext, useContext, useState, useMemo, useCallback } from
 
 const DataContext = createContext(null);
 
+const LS_WORKLOGS = 'fandora_worklogs_cache';
+const LS_SALARY = 'fandora_salary_cache';
+
+const readCache = (key) => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed?.data) ? parsed.data : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeCache = (key, data) => {
+  try {
+    localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() }));
+  } catch (err) {
+    // 容量超過 5MB 會 throw，靜默跳過
+    console.warn(`[DataContext] cache ${key} failed:`, err?.message);
+  }
+};
+
 export function DataProvider({ children }) {
-  const [workLogs, setWorkLogsState] = useState([]);
-  const [salaryData, setSalaryDataState] = useState([]);
+  // 啟動時從 localStorage 恢復，避免 reload 都要重抓 Drive
+  const [workLogs, setWorkLogsState] = useState(() => readCache(LS_WORKLOGS));
+  const [salaryData, setSalaryDataState] = useState(() => readCache(LS_SALARY));
   const [isLoading, setIsLoadingState] = useState(false);
   const [loadingMessage, setLoadingMessageState] = useState('');
   const [filters, setFiltersState] = useState({
@@ -13,11 +37,22 @@ export function DataProvider({ children }) {
     dateTo: '',
   });
 
-  // ===== 獨立 setter =====
-  const setWorkLogs = useCallback((logs) => setWorkLogsState(logs), []);
-  const appendWorkLogs = useCallback((logs) =>
-    setWorkLogsState(prev => [...prev, ...logs]), []);
-  const setSalaryData = useCallback((records) => setSalaryDataState(records), []);
+  // ===== 獨立 setter（同時寫 cache） =====
+  const setWorkLogs = useCallback((logs) => {
+    setWorkLogsState(logs);
+    writeCache(LS_WORKLOGS, logs);
+  }, []);
+  const appendWorkLogs = useCallback((logs) => {
+    setWorkLogsState((prev) => {
+      const merged = [...prev, ...logs];
+      writeCache(LS_WORKLOGS, merged);
+      return merged;
+    });
+  }, []);
+  const setSalaryData = useCallback((records) => {
+    setSalaryDataState(records);
+    writeCache(LS_SALARY, records);
+  }, []);
   const setFilters = useCallback((partial) =>
     setFiltersState(prev => ({ ...prev, ...partial })), []);
   const setLoading = useCallback((loading, message = '') => {
@@ -28,6 +63,10 @@ export function DataProvider({ children }) {
     setWorkLogsState([]);
     setSalaryDataState([]);
     setFiltersState({ month: 'all', dateFrom: '', dateTo: '' });
+    try {
+      localStorage.removeItem(LS_WORKLOGS);
+      localStorage.removeItem(LS_SALARY);
+    } catch {}
   }, []);
 
   // ===== Derived: filteredLogs =====
