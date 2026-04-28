@@ -1,7 +1,9 @@
 import { useState, useCallback } from 'react';
 import { Card, Input, Button, Space, Row, Col, Divider, Alert, Spin, Empty } from 'antd';
-import { testConnection, listAllSpreadsheets, listFilesInFolder } from '../api/gdrive';
+import { testConnection, listAllSpreadsheets, listFilesInFolder, exportSheetAsXlsx } from '../api/gdrive';
 import { classifyFileType } from '../utils/names';
+import { extractMonthFromSheetName } from '../utils/dates';
+import * as XLSX from 'xlsx';
 import { useData } from '../data/DataContext';
 import { useDataLoader } from '../data/useDataLoader';
 import { useAuth } from '../auth/AuthContext';
@@ -209,6 +211,46 @@ export default function SettingsPage() {
       });
     } catch (err) {
       steps.push({ name: '6. listAllSpreadsheets', value: { error: err.message } });
+    }
+
+    // Step 7: 對第一個 individual file 實際 export + 看 sheet 結構
+    try {
+      const allSheets = await listAllSpreadsheets(fid, tk);
+      const individualFiles = allSheets.filter((f) => classifyFileType(f.name) === 'individual');
+      if (individualFiles.length === 0) {
+        steps.push({ name: '7. 第一個 individual file 結構', value: '沒有 individual 檔案' });
+      } else {
+        const file = individualFiles[0];
+        const buffer = await exportSheetAsXlsx(file.id, tk);
+        const wb = XLSX.read(buffer, { cellDates: false });
+        const sheetNames = wb.SheetNames;
+
+        // 抓前 3 個 sheet 的前 6 row 內容
+        const samples = sheetNames.slice(0, 3).map((name) => {
+          const ws = wb.Sheets[name];
+          const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+          return {
+            name,
+            extractMonthFromSheetName: extractMonthFromSheetName(name),
+            rowCount: rows.length,
+            firstRows: rows.slice(0, 6).map((row) =>
+              row.slice(0, 8).map((c) => (typeof c === 'string' ? c.slice(0, 30) : c))
+            ),
+          };
+        });
+
+        steps.push({
+          name: '7. 第一個 individual file 結構',
+          value: {
+            filename: file.name,
+            sheetCount: sheetNames.length,
+            sheetNames,
+            samples,
+          },
+        });
+      }
+    } catch (err) {
+      steps.push({ name: '7. Export 結構', value: { error: err.message } });
     }
 
     setDiagnostic(steps);
