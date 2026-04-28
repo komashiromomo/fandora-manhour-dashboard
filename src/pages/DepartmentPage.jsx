@@ -1,157 +1,162 @@
+/**
+ * 部門分析頁 — Fandora V2 設計風格
+ */
 import { useMemo } from 'react';
-import { Row, Col, Spin, Empty } from 'antd';
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import DataTable from '../components/DataTable';
-import ChartCard from '../components/ChartCard';
+import { groupBy, sumBy, orderBy } from 'lodash-es';
+import {
+  KPICard,
+  Card,
+  Donut,
+  TopList,
+  Empty,
+} from '../components/v2';
 import FilterToolbar from '../components/FilterToolbar';
 import { useData } from '../data/DataContext';
 import { roundHours } from '../utils/dates';
 import { calcDeptCost } from '../utils/costCalculator';
-import { CHART_COLORS } from '../config/constants';
-import { groupBy, sumBy, orderBy, uniqBy } from 'lodash-es';
+import { useTheme } from '../components/ThemeProvider';
+
+const DEPT_PALETTE = [
+  '#00A4C6', '#FF9900', '#9B59B6', '#2BB673', '#E14D4D',
+  '#3498DB', '#F1C40F', '#1ABC9C', '#E67E22', '#34495E',
+];
 
 export default function DepartmentPage() {
-  const { filteredLogs, salaryData, isLoading } = useData();
+  const { filteredLogs, salaryData } = useData();
+  const { showCost } = useTheme();
 
   const deptCosts = useMemo(() => calcDeptCost(filteredLogs, salaryData), [filteredLogs, salaryData]);
 
-  // ===== 部門統計 =====
   const deptStats = useMemo(() => {
     const grouped = groupBy(filteredLogs, 'department');
     return orderBy(
-      Object.entries(grouped).map(([dept, logs]) => ({
-        key: dept,
+      Object.entries(grouped).map(([dept, logs], idx) => ({
         dept: dept || '未知部門',
-        cost: Math.round(deptCosts[dept] || 0),
-        employeeCount: new Set(logs.map(l => l.employee)).size,
         hours: roundHours(sumBy(logs, 'hours')),
+        employeeCount: new Set(logs.map((l) => l.employee)).size,
         projectCount: new Set(
-          logs.filter(l => l.ipProject !== '非授權IP').map(l => l.ipProject)
+          logs.filter((l) => l.ipProject !== '非授權IP').map((l) => l.ipProject)
         ).size,
+        cost: Math.round(deptCosts[dept] || 0),
+        color: DEPT_PALETTE[idx % DEPT_PALETTE.length],
       })),
       'hours',
       'desc'
     );
   }, [filteredLogs, deptCosts]);
 
-  // ===== 部門工時分佈（圓餅圖） =====
-  const deptPieData = useMemo(() => {
-    return deptStats.map(d => ({
-      name: d.dept,
-      value: d.hours,
-    }));
-  }, [deptStats]);
+  const totalHours = sumBy(deptStats, 'hours');
+  const totalEmployees = new Set(filteredLogs.map((l) => l.employee)).size;
+  const totalDepts = deptStats.length;
 
-  // ===== 部門員工明細（橫條圖） =====
-  const deptEmployeeData = useMemo(() => {
-    return deptStats.slice(0, 10).map(d => ({
-      dept: d.dept,
-      count: d.employeeCount,
-    }));
-  }, [deptStats]);
+  const donutData = useMemo(
+    () => deptStats.map((d) => ({ value: d.hours, color: d.color })),
+    [deptStats]
+  );
 
-  // ===== 表格列定義 =====
-  const columns = [
-    {
-      title: '部門',
-      dataIndex: 'dept',
-      key: 'dept',
-      width: 140,
-    },
-    {
-      title: '員工數',
-      dataIndex: 'employeeCount',
-      key: 'employeeCount',
-    },
-    {
-      title: '工時（小時）',
-      dataIndex: 'hours',
-      key: 'hours',
-      render: h => h || 0,
-    },
-    {
-      title: '授權IP數',
-      dataIndex: 'projectCount',
-      key: 'projectCount',
-    },
-    {
-      title: '估算成本',
-      dataIndex: 'cost',
-      key: 'cost',
-      render: v => v ? `$${v.toLocaleString()}` : '--',
-      sorter: (a, b) => a.cost - b.cost,
-    },
-  ];
-
-  if (isLoading) {
-    return <Spin style={{ margin: '50px auto', display: 'block' }} />;
-  }
+  const topList = useMemo(
+    () =>
+      deptStats.map((d) => ({ label: d.dept, value: d.hours, color: d.color })),
+    [deptStats]
+  );
 
   if (filteredLogs.length === 0) {
-    return <Empty description="暫無數據" />;
+    return (
+      <>
+        <div className="hero-decor" />
+        <div className="page-hero">
+          <div>
+            <div className="eyebrow">DEPARTMENTS</div>
+            <h1>部門分析</h1>
+            <p className="sub">檢視各部門的工時分佈、員工人數與成本投入。</p>
+          </div>
+        </div>
+        <Empty title="暫無數據" desc="請先到「設定」頁從 Drive 載入工時資料。" />
+      </>
+    );
   }
 
   return (
-    <div style={{ padding: '24px' }}>
-      {/* Filter Toolbar */}
-      <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
-        <Col xs={24}>
-          <FilterToolbar />
-        </Col>
-      </Row>
+    <>
+      <div className="hero-decor" />
+      <div className="page-hero">
+        <div>
+          <div className="eyebrow">DEPARTMENTS</div>
+          <h1>部門分析</h1>
+          <p className="sub">
+            目前涵蓋 {totalDepts} 個部門 · {totalEmployees} 位員工 · 總工時 {Math.round(totalHours).toLocaleString()} 小時。
+          </p>
+        </div>
+      </div>
 
-      {/* 部門統計表 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
-        <Col xs={24}>
-          <ChartCard title="部門統計">
-            <DataTable columns={columns} dataSource={deptStats} rowKey="key" />
-          </ChartCard>
-        </Col>
-      </Row>
+      <div className="toolbar" style={{ marginBottom: 'var(--gap)' }}>
+        <FilterToolbar />
+      </div>
 
-      {/* 部門工時分佈圓餅圖 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
-        <Col xs={24} lg={12}>
-          <ChartCard title="部門工時分佈">
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={deptPieData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                >
-                  {deptPieData.map((_, idx) => (
-                    <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </ChartCard>
-        </Col>
+      <div className="grid grid-4" style={{ marginBottom: 'var(--gap)' }}>
+        <KPICard label="部門數" value={totalDepts} unit="個" />
+        <KPICard label="總員工數" value={totalEmployees} unit="人" sparkColor="#FF9900" />
+        <KPICard label="總工時" value={Math.round(totalHours).toLocaleString()} unit="小時" sparkColor="#9B59B6" />
+        <KPICard
+          label="平均部門工時"
+          value={totalDepts > 0 ? Math.round(totalHours / totalDepts).toLocaleString() : 0}
+          unit="小時"
+          sparkColor="#2BB673"
+        />
+      </div>
 
-        {/* 部門員工數橫條圖 */}
-        <Col xs={24} lg={12}>
-          <ChartCard title="各部門員工人數">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart
-                data={deptEmployeeData}
-                layout="vertical"
-                margin={{ left: 120 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis dataKey="dept" type="category" width={100} />
-                <Tooltip />
-                <Bar dataKey="count" fill={CHART_COLORS[2]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-        </Col>
-      </Row>
-    </div>
+      <div className="grid grid-12">
+        <Card col={5} title="部門工時分佈" sub="各部門佔比">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+            <Donut data={donutData} size={180} />
+            <div style={{ flex: 1, fontSize: 12 }}>
+              {deptStats.slice(0, 6).map((d) => (
+                <div key={d.dept} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <span className="ip-swatch" style={{ background: d.color }} />
+                  <span style={{ flex: 1, color: 'var(--fg-2)' }}>{d.dept}</span>
+                  <span style={{ fontFamily: 'var(--font-numeric)', fontWeight: 600 }}>
+                    {Math.round((d.hours * 100) / (totalHours || 1))}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+
+        <Card col={7} title="部門工時排行">
+          <TopList items={topList} />
+        </Card>
+
+        <Card col={12} title="部門統計表" sub={`${deptStats.length} 個部門`}>
+          <div className="tbl-wrap">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>部門</th>
+                  <th className="num">員工數</th>
+                  <th className="num">工時</th>
+                  <th className="num">授權 IP 數</th>
+                  {showCost && <th className="num">估算成本</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {deptStats.map((d) => (
+                  <tr key={d.dept}>
+                    <td>
+                      <span className="ip-swatch" style={{ background: d.color, marginRight: 8 }} />
+                      {d.dept}
+                    </td>
+                    <td className="num">{d.employeeCount}</td>
+                    <td className="num">{d.hours.toLocaleString()}</td>
+                    <td className="num">{d.projectCount}</td>
+                    {showCost && <td className="num">{d.cost ? `$${d.cost.toLocaleString()}` : '—'}</td>}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
+    </>
   );
 }

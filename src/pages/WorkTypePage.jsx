@@ -1,81 +1,159 @@
-import React, { useMemo } from 'react';
+/**
+ * 工時類型頁 — Fandora V2 設計風格
+ */
+import { useMemo } from 'react';
 import { groupBy, sumBy, orderBy } from 'lodash-es';
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useData } from '../data/DataContext';
+import { KPICard, Card, Treemap, TopList, Empty } from '../components/v2';
 import FilterToolbar from '../components/FilterToolbar';
-import ChartCard from '../components/ChartCard';
-import DataTable from '../components/DataTable';
-import { CHART_COLORS } from '../config/constants';
+import { useData } from '../data/DataContext';
 import { roundHours } from '../utils/dates';
+
+const PALETTE = [
+  '#00A4C6', '#FF9900', '#9B59B6', '#2BB673', '#E14D4D',
+  '#3498DB', '#F1C40F', '#1ABC9C', '#E67E22', '#34495E',
+  '#16A085', '#C0392B',
+];
 
 export default function WorkTypePage() {
   const { filteredLogs } = useData();
 
-  const workTypeStats = useMemo(() => {
+  const stats = useMemo(() => {
     const grouped = groupBy(filteredLogs, 'workType');
     const total = sumBy(filteredLogs, 'hours');
     return orderBy(
-      Object.entries(grouped).map(([workType, logs]) => ({
-        key: workType,
+      Object.entries(grouped).map(([workType, logs], idx) => ({
         workType,
         hours: roundHours(sumBy(logs, 'hours')),
         percent: total > 0 ? roundHours((sumBy(logs, 'hours') / total) * 100) : 0,
-        employeeCount: new Set(logs.map(l => l.employee)).size,
-        projects: [...new Set(logs.map(l => l.ipProject))].join(', '),
+        employeeCount: new Set(logs.map((l) => l.employee)).size,
+        projects: [...new Set(logs.map((l) => l.ipProject))],
+        color: PALETTE[idx % PALETTE.length],
       })),
-      'hours', 'desc'
+      'hours',
+      'desc'
     );
   }, [filteredLogs]);
 
-  const pieData = useMemo(() => {
-    const top10 = workTypeStats.slice(0, 10);
-    const others = workTypeStats.slice(10);
-    const otherHours = sumBy(others, 'hours');
-    const data = top10.map(w => ({ name: w.workType, value: w.hours }));
-    if (otherHours > 0) data.push({ name: '其他', value: roundHours(otherHours) });
-    return data;
-  }, [workTypeStats]);
+  const totalHours = sumBy(stats, 'hours');
 
-  const columns = [
-    { title: '工作項目', dataIndex: 'workType', key: 'workType' },
-    { title: '工時', dataIndex: 'hours', key: 'hours', sorter: (a, b) => a.hours - b.hours },
-    { title: '佔比 %', dataIndex: 'percent', key: 'percent' },
-    { title: '參與人數', dataIndex: 'employeeCount', key: 'employeeCount' },
-    { title: '關聯IP項目', dataIndex: 'projects', key: 'projects' },
-  ];
+  const treemapData = useMemo(
+    () =>
+      stats.slice(0, 12).map((s) => ({
+        name: s.workType,
+        value: s.hours,
+        color: s.color,
+      })),
+    [stats]
+  );
 
-  const isEmpty = filteredLogs.length === 0;
+  const topList = useMemo(
+    () =>
+      stats.slice(0, 10).map((s) => ({
+        label: s.workType,
+        value: s.hours,
+        color: s.color,
+      })),
+    [stats]
+  );
+
+  if (filteredLogs.length === 0) {
+    return (
+      <>
+        <div className="hero-decor" />
+        <div className="page-hero">
+          <div>
+            <div className="eyebrow">WORK TYPES</div>
+            <h1>工時類型分析</h1>
+            <p className="sub">把工時依工作項目分類、找到時間都花到哪去了。</p>
+          </div>
+        </div>
+        <Empty title="暫無數據" desc="請先到「設定」頁從 Drive 載入工時資料。" />
+      </>
+    );
+  }
 
   return (
-    <div style={{ padding: '20px', background: '#f5f5f5', minHeight: '100vh' }}>
-      <FilterToolbar />
+    <>
+      <div className="hero-decor" />
+      <div className="page-hero">
+        <div>
+          <div className="eyebrow">WORK TYPES</div>
+          <h1>工時類型分析</h1>
+          <p className="sub">
+            {stats.length} 種工作項目 · 總工時 {Math.round(totalHours).toLocaleString()} 小時 ·
+            前 3 名共佔 {stats.slice(0, 3).reduce((s, x) => s + x.percent, 0).toFixed(0)}%。
+          </p>
+        </div>
+      </div>
 
-      <ChartCard title="工作項目分佈（Top 10）" isEmpty={isEmpty} height={300}>
-        <ResponsiveContainer width="100%" height={300}>
-          <PieChart>
-            <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, value }) => `${name}: ${value}h`}>
-              {pieData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
-            </Pie>
-            <Tooltip />
-          </PieChart>
-        </ResponsiveContainer>
-      </ChartCard>
+      <div className="toolbar" style={{ marginBottom: 'var(--gap)' }}>
+        <FilterToolbar />
+      </div>
 
-      <ChartCard title="工作項目工時排行" isEmpty={workTypeStats.length === 0} height={Math.max(250, workTypeStats.length * 30)}>
-        <ResponsiveContainer width="100%" height={Math.max(250, workTypeStats.length * 30)}>
-          <BarChart data={workTypeStats.slice(0, 20)} layout="vertical" margin={{ left: 120 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis type="number" />
-            <YAxis type="category" dataKey="workType" width={110} />
-            <Tooltip />
-            <Bar dataKey="hours" fill={CHART_COLORS[0]} name="工時" />
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartCard>
+      <div className="grid grid-4" style={{ marginBottom: 'var(--gap)' }}>
+        <KPICard label="工作項目數" value={stats.length} unit="項" />
+        <KPICard label="總工時" value={Math.round(totalHours).toLocaleString()} unit="小時" sparkColor="#FF9900" />
+        <KPICard
+          label="最大佔比"
+          value={stats[0]?.workType || '—'}
+          unit={stats[0] ? `${stats[0].percent}%` : ''}
+          sparkColor="#9B59B6"
+        />
+        <KPICard
+          label="平均項目工時"
+          value={stats.length > 0 ? Math.round(totalHours / stats.length).toLocaleString() : 0}
+          unit="小時"
+          sparkColor="#2BB673"
+        />
+      </div>
 
-      <ChartCard title="工作項目統計表" isEmpty={isEmpty}>
-        <DataTable columns={columns} dataSource={workTypeStats} />
-      </ChartCard>
-    </div>
+      <div className="grid grid-12">
+        <Card col={12} title="工作項目 Treemap" sub="區塊面積 = 工時佔比">
+          <Treemap data={treemapData} />
+        </Card>
+
+        <Card col={5} title="Top 10 工作項目">
+          <TopList items={topList} />
+        </Card>
+
+        <Card col={7} title="完整工作項目統計" sub={`${stats.length} 項`}>
+          <div className="tbl-wrap" style={{ maxHeight: 480, overflowY: 'auto' }}>
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>工作項目</th>
+                  <th className="num">工時</th>
+                  <th className="bar-cell">佔比</th>
+                  <th className="num">參與人數</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.map((s) => (
+                  <tr key={s.workType}>
+                    <td>
+                      <span className="ip-swatch" style={{ background: s.color, marginRight: 8 }} />
+                      {s.workType}
+                    </td>
+                    <td className="num">{s.hours.toLocaleString()}</td>
+                    <td className="bar-cell">
+                      <div className="bar-track">
+                        <div
+                          className="bar-fill"
+                          style={{ width: `${Math.min(100, s.percent)}%`, background: s.color }}
+                        />
+                      </div>
+                      <span style={{ fontSize: 11, color: 'var(--fg-3)', marginLeft: 8 }}>
+                        {s.percent}%
+                      </span>
+                    </td>
+                    <td className="num">{s.employeeCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
+    </>
   );
 }

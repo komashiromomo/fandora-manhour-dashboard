@@ -1,91 +1,219 @@
-import React, { useMemo } from 'react';
-import { Row, Col, Empty } from 'antd';
+/**
+ * 專案分析頁 — Fandora V2 設計風格
+ */
+import { useMemo } from 'react';
 import { groupBy, sumBy, orderBy } from 'lodash-es';
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useData } from '../data/DataContext';
+import {
+  KPICard,
+  Card,
+  Donut,
+  Treemap,
+  TopList,
+  Empty,
+} from '../components/v2';
 import FilterToolbar from '../components/FilterToolbar';
-import ChartCard from '../components/ChartCard';
-import DataTable from '../components/DataTable';
-import { CHART_COLORS } from '../config/constants';
+import { useData } from '../data/DataContext';
 import { roundHours } from '../utils/dates';
 import { calcProjectCost } from '../utils/costCalculator';
+import { useTheme } from '../components/ThemeProvider';
+
+const IP_PALETTE = [
+  '#00A4C6', '#FF9900', '#9B59B6', '#2BB673', '#E14D4D',
+  '#3498DB', '#F1C40F', '#1ABC9C', '#E67E22', '#34495E',
+];
 
 export default function ProjectPage() {
   const { filteredLogs, salaryData } = useData();
+  const { showCost } = useTheme();
 
   const projectStats = useMemo(() => {
     const grouped = groupBy(filteredLogs, 'ipProject');
     return orderBy(
       Object.entries(grouped).map(([project, logs]) => ({
-        key: project,
         project,
         hours: roundHours(sumBy(logs, 'hours')),
-        employeeCount: new Set(logs.map(l => l.employee)).size,
-        departments: [...new Set(logs.map(l => l.department))].join(', '),
-        taskCount: new Set(logs.map(l => l.task)).size,
+        employeeCount: new Set(logs.map((l) => l.employee)).size,
+        departments: [...new Set(logs.map((l) => l.department))],
+        taskCount: new Set(logs.map((l) => l.task)).size,
       })),
-      'hours', 'desc'
+      'hours',
+      'desc'
     );
   }, [filteredLogs]);
 
-  // Phase 3: 成本分攤
-  const projectCosts = useMemo(() => calcProjectCost(filteredLogs, salaryData), [filteredLogs, salaryData]);
-  const statsWithCost = projectStats.map(p => ({
-    ...p,
-    cost: Math.round(projectCosts[p.project] || 0),
-  }));
-  const ipProjects = statsWithCost.filter(p => p.project !== '非授權IP');
+  const projectCosts = useMemo(
+    () => calcProjectCost(filteredLogs, salaryData),
+    [filteredLogs, salaryData]
+  );
 
-  const ipVsNonIp = useMemo(() => {
-    const ipHours = sumBy(ipProjects, 'hours');
-    const nonIpHours = projectStats.find(p => p.project === '非授權IP')?.hours || 0;
-    return [
-      { name: '授權IP', value: roundHours(ipHours) },
-      { name: '非授權IP', value: roundHours(nonIpHours) },
-    ];
-  }, [projectStats, ipProjects]);
+  const statsWithCost = useMemo(
+    () =>
+      projectStats.map((p) => ({
+        ...p,
+        cost: Math.round(projectCosts[p.project] || 0),
+      })),
+    [projectStats, projectCosts]
+  );
 
-  const columns = [
-    { title: '專案（授權IP）', dataIndex: 'project', key: 'project' },
-    { title: '工時', dataIndex: 'hours', key: 'hours', sorter: (a, b) => a.hours - b.hours },
-    { title: '參與人數', dataIndex: 'employeeCount', key: 'employeeCount' },
-    { title: '參與部門', dataIndex: 'departments', key: 'departments' },
-    { title: '工作項目數', dataIndex: 'taskCount', key: 'taskCount' },
-    { title: '估算成本', dataIndex: 'cost', key: 'cost', render: v => v ? `$${v.toLocaleString()}` : '--', sorter: (a, b) => a.cost - b.cost },
-  ];
+  const ipProjects = statsWithCost.filter((p) => p.project !== '非授權IP');
+  const nonIpProject = statsWithCost.find((p) => p.project === '非授權IP');
 
-  const isEmpty = filteredLogs.length === 0;
+  const totalHours = sumBy(statsWithCost, 'hours');
+  const ipHours = sumBy(ipProjects, 'hours');
+  const nonIpHours = nonIpProject?.hours || 0;
+  const ipPct = totalHours > 0 ? Math.round((ipHours * 100) / totalHours) : 0;
+
+  const treemapData = useMemo(
+    () =>
+      ipProjects.slice(0, 12).map((p, i) => ({
+        name: p.project,
+        value: p.hours,
+        color: IP_PALETTE[i % IP_PALETTE.length],
+      })),
+    [ipProjects]
+  );
+
+  const topList = useMemo(
+    () =>
+      ipProjects.slice(0, 8).map((p, i) => ({
+        label: p.project,
+        value: p.hours,
+        color: IP_PALETTE[i % IP_PALETTE.length],
+      })),
+    [ipProjects]
+  );
+
+  if (filteredLogs.length === 0) {
+    return (
+      <>
+        <div className="hero-decor" />
+        <div className="page-hero">
+          <div>
+            <div className="eyebrow">PROJECTS</div>
+            <h1>專案分析</h1>
+            <p className="sub">逐一檢視每個授權 IP 的工時投入與成本配置。</p>
+          </div>
+        </div>
+        <Empty title="暫無數據" desc="請先到「設定」頁從 Drive 載入工時資料。" />
+      </>
+    );
+  }
 
   return (
-    <div style={{ padding: '20px', background: '#f5f5f5', minHeight: '100vh' }}>
-      <FilterToolbar />
+    <>
+      <div className="hero-decor" />
+      <div className="page-hero">
+        <div>
+          <div className="eyebrow">PROJECTS</div>
+          <h1>專案分析</h1>
+          <p className="sub">
+            目前追蹤 {ipProjects.length} 個授權 IP，總工時 {Math.round(ipHours).toLocaleString()} 小時，
+            佔總工時 {ipPct}%。
+          </p>
+        </div>
+      </div>
 
-      <ChartCard title="授權IP vs 非授權IP 工時佔比" isEmpty={isEmpty} height={250}>
-        <ResponsiveContainer width="100%" height={250}>
-          <PieChart>
-            <Pie data={ipVsNonIp} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, value }) => `${name}: ${value}h`}>
-              {ipVsNonIp.map((_, i) => <Cell key={i} fill={CHART_COLORS[i]} />)}
-            </Pie>
-            <Tooltip />
-          </PieChart>
-        </ResponsiveContainer>
-      </ChartCard>
+      <div className="toolbar" style={{ marginBottom: 'var(--gap)' }}>
+        <FilterToolbar />
+      </div>
 
-      <ChartCard title="授權IP 專案工時排行" isEmpty={ipProjects.length === 0} height={Math.max(250, ipProjects.length * 35)}>
-        <ResponsiveContainer width="100%" height={Math.max(250, ipProjects.length * 35)}>
-          <BarChart data={ipProjects.slice(0, 15)} layout="vertical" margin={{ left: 100 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis type="number" />
-            <YAxis type="category" dataKey="project" width={90} />
-            <Tooltip />
-            <Bar dataKey="hours" fill={CHART_COLORS[0]} name="工時" />
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartCard>
+      <div className="grid grid-4" style={{ marginBottom: 'var(--gap)' }}>
+        <KPICard label="授權 IP 數" value={ipProjects.length} unit="個" />
+        <KPICard label="授權 IP 工時" value={Math.round(ipHours).toLocaleString()} unit="小時" />
+        <KPICard label="非授權工時" value={Math.round(nonIpHours).toLocaleString()} unit="小時" sparkColor="#E14D4D" />
+        <KPICard label="授權佔比" value={`${ipPct}%`} sparkColor="#2BB673" />
+      </div>
 
-      <ChartCard title="全部專案統計表" isEmpty={isEmpty}>
-        <DataTable columns={columns} dataSource={statsWithCost} />
-      </ChartCard>
-    </div>
+      <div className="grid grid-12">
+        <Card col={4} title="授權 vs 非授權" sub="工時佔比">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20, padding: '8px 0' }}>
+            <Donut
+              data={[
+                { value: ipHours, color: 'var(--accent)' },
+                { value: nonIpHours, color: 'var(--fg-muted)' },
+              ]}
+              size={140}
+            />
+            <div style={{ flex: 1 }}>
+              <div style={{ marginBottom: 14 }}>
+                <div className="eyebrow" style={{ fontSize: 11, color: 'var(--fg-3)' }}>授權 IP</div>
+                <div style={{ fontFamily: 'var(--font-numeric)', fontSize: 24, fontWeight: 700, color: 'var(--accent)' }}>
+                  {ipPct}%
+                </div>
+              </div>
+              <div>
+                <div className="eyebrow" style={{ fontSize: 11, color: 'var(--fg-3)' }}>非授權</div>
+                <div style={{ fontFamily: 'var(--font-numeric)', fontSize: 24, fontWeight: 700, color: 'var(--fg-2)' }}>
+                  {100 - ipPct}%
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card col={8} title="Top 8 授權 IP" sub="點擊條形可下鑽">
+          <TopList items={topList} />
+        </Card>
+
+        <Card col={12} title="IP 工時 Treemap" sub="區塊面積 = 工時佔比">
+          <Treemap data={treemapData} />
+        </Card>
+
+        <Card col={12} title="全部專案統計" sub={`${statsWithCost.length} 項`}>
+          <div className="tbl-wrap">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>專案 / 授權 IP</th>
+                  <th className="num">工時</th>
+                  <th className="num">參與人數</th>
+                  <th>參與部門</th>
+                  <th className="num">工作項目數</th>
+                  {showCost && <th className="num">估算成本</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {statsWithCost.map((p) => (
+                  <tr key={p.project}>
+                    <td>
+                      <span
+                        className="ip-swatch"
+                        style={{
+                          background:
+                            p.project === '非授權IP'
+                              ? 'var(--fg-muted)'
+                              : IP_PALETTE[
+                                  ipProjects.findIndex((x) => x.project === p.project) %
+                                    IP_PALETTE.length
+                                ],
+                          marginRight: 8,
+                        }}
+                      />
+                      {p.project}
+                    </td>
+                    <td className="num">{p.hours.toLocaleString()}</td>
+                    <td className="num">{p.employeeCount}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {p.departments.slice(0, 3).map((d) => (
+                          <span key={d} className="tag">
+                            {d}
+                          </span>
+                        ))}
+                        {p.departments.length > 3 && (
+                          <span className="tag">+{p.departments.length - 3}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="num">{p.taskCount}</td>
+                    {showCost && <td className="num">{p.cost ? `$${p.cost.toLocaleString()}` : '—'}</td>}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
+    </>
   );
 }
