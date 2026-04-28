@@ -142,11 +142,17 @@ export function AuthProvider({ children }) {
     }
   }, [authUser, accessToken]);
 
-  /** 顯式觸發 Drive 授權（user gesture 內呼叫） */
-  const requestDriveAccess = () => {
+  /** 顯式觸發 Drive 授權（user gesture 內呼叫）。force=true 會強制走 consent，拿全新 token */
+  const requestDriveAccess = (force = false) => {
     if (!tokenClientRef.current) return;
+    // 清掉本地 stale token，避免下次又用到失效的
+    localStorage.removeItem(LS_ACCESS_TOKEN);
+    setAccessToken(null);
     try {
-      tokenClientRef.current.requestAccessToken({ hint: authUser?.email });
+      tokenClientRef.current.requestAccessToken({
+        hint: authUser?.email,
+        prompt: force ? 'consent' : '',
+      });
     } catch (err) {
       console.warn('[Auth] requestDriveAccess failed:', err);
     }

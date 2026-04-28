@@ -136,17 +136,14 @@ export default function SettingsPage() {
               <Button onClick={handleLoadFromDrive} loading={isLoading}>
                 從 Drive 載入
               </Button>
-              {!accessToken && (
-                <Button danger onClick={requestDriveAccess}>
-                  重新授權 Drive
-                </Button>
-              )}
+              <Button danger onClick={() => requestDriveAccess(true)}>
+                強制重新授權 Drive
+              </Button>
             </Space>
-            {!accessToken && (
-              <div style={{ marginTop: 8, fontSize: 12, color: '#fa8c16' }}>
-                目前沒有有效的 Drive access token。請按「重新授權 Drive」彈出 Google 授權視窗（同意 Drive 唯讀權限），完成後再點「從 Drive 載入」。
-              </div>
-            )}
+            <div style={{ marginTop: 8, fontSize: 12, color: '#888' }}>
+              載入失敗（出現 401）時請按「強制重新授權 Drive」，會彈出 Google 授權視窗，
+              同意後 token 會被重置成全新的；接著再點「從 Drive 載入」即可。
+            </div>
           </Col>
           {testStatus && (
             <Col xs={24}>
