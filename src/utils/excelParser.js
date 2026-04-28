@@ -268,7 +268,7 @@ export function parseIndividualSheets(workbook, filename) {
       let taskColIdx = 3;
       let hoursColIdx = 6;
 
-      let lastDate = '';
+      let lastDate; // ⚠️ 保留原始型別（可能是 number Excel serial，String 化會讓 parseDateString 失敗）
       let lastIP = '';
       let lastTask = '';
 
@@ -277,21 +277,23 @@ export function parseIndividualSheets(workbook, filename) {
         const row = rows[i];
         if (!row || row.length === 0) continue;
 
-        const dateVal = String(row[dateColIdx] || '').trim();
+        const rawDate = row[dateColIdx];
+        const hasDate = rawDate !== undefined && rawDate !== null && String(rawDate).trim() !== '';
         const ipVal = String(row[ipColIdx] || '').trim();
         const taskVal = String(row[taskColIdx] || '').trim();
         const hoursVal = row[hoursColIdx];
 
-        // Carry-forward 機制
-        if (dateVal) lastDate = dateVal;
+        // Carry-forward 機制：日期保留原始 raw（number serial 不要 String 化）
+        if (hasDate) lastDate = rawDate;
         if (ipVal && ipVal !== '-' && ipVal !== '無') lastIP = ipVal;
         if (taskVal) lastTask = taskVal;
 
-        const date = lastDate ? parseDateString(lastDate, year, monthStr) : '';
+        const date = lastDate !== undefined ? parseDateString(lastDate, year, monthStr) : '';
         if (!date) continue;
 
-        // 解析工時
-        const hours = roundHours(parseFloat(hoursVal));
+        // 解析工時（hoursVal 可能是 number，也可能是 string）
+        const hoursNum = typeof hoursVal === 'number' ? hoursVal : parseFloat(hoursVal);
+        const hours = roundHours(hoursNum);
         if (isNaN(hours) || hours === 0) continue;
 
         // IP 和工作項目的優先順序
