@@ -68,17 +68,35 @@ export function AuthProvider({ children }) {
     return new Promise((resolve, reject) => {
       if (!tokenClientRef.current) { reject(new Error('Token client not ready')); return; }
       const originalCallback = tokenClientRef.current.callback;
-      tokenClientRef.current.callback = (tokenResponse) => {
-        if (tokenResponse.access_token) {
-          setAccessToken(tokenResponse.access_token);
-          localStorage.setItem(LS_ACCESS_TOKEN, tokenResponse.access_token);
-          resolve(tokenResponse.access_token);
-        } else {
-          reject(new Error('No access_token'));
-        }
+      let settled = false;
+      const finish = (fn) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
         tokenClientRef.current.callback = originalCallback;
+        fn();
       };
-      tokenClientRef.current.requestAccessToken();
+      // GIS silent flow 失敗時可能完全不 call callback，加 8 秒 timeout 防 hung
+      const timer = setTimeout(
+        () => finish(() => reject(new Error('refreshToken timeout（GIS 沒回應，可能需要按「強制重新授權 Drive」）'))),
+        8000
+      );
+      tokenClientRef.current.callback = (tokenResponse) => {
+        if (tokenResponse?.access_token) {
+          finish(() => {
+            setAccessToken(tokenResponse.access_token);
+            localStorage.setItem(LS_ACCESS_TOKEN, tokenResponse.access_token);
+            resolve(tokenResponse.access_token);
+          });
+        } else {
+          finish(() => reject(new Error('No access_token')));
+        }
+      };
+      try {
+        tokenClientRef.current.requestAccessToken();
+      } catch (err) {
+        finish(() => reject(err));
+      }
     });
   };
 
