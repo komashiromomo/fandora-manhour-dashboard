@@ -2,7 +2,8 @@ import { useState, useCallback } from 'react';
 import { Card, Input, Button, Space, Row, Col, Divider, Alert, Spin, Empty } from 'antd';
 import { testConnection, listAllSpreadsheets, listFilesInFolder, exportSheetAsXlsx } from '../api/gdrive';
 import { classifyFileType } from '../utils/names';
-import { extractMonthFromSheetName } from '../utils/dates';
+import { extractMonthFromSheetName, parseDateString, excelDateToString } from '../utils/dates';
+import { parseWorkbook } from '../utils/excelParser';
 import * as XLSX from 'xlsx';
 import { useData } from '../data/DataContext';
 import { useDataLoader } from '../data/useDataLoader';
@@ -251,6 +252,57 @@ export default function SettingsPage() {
       }
     } catch (err) {
       steps.push({ name: '7. Export 結構', value: { error: err.message } });
+    }
+
+    // Step 8: parseDateString 對各種輸入的實際輸出（驗證日期解析本身有沒有壞）
+    try {
+      steps.push({
+        name: '8. parseDateString 行為驗證',
+        value: {
+          'parseDateString(46024)': parseDateString(46024),
+          'parseDateString(46024,"2026","1")': parseDateString(46024, '2026', '1'),
+          'parseDateString("46024")': parseDateString('46024'),
+          'parseDateString("2026/01/02")': parseDateString('2026/01/02'),
+          'parseDateString("2026/01/02（五）")': parseDateString('2026/01/02（五）'),
+          'parseDateString("3/2","2026","3")': parseDateString('3/2', '2026', '3'),
+          'parseDateString("日期")': parseDateString('日期'),
+          'parseDateString("範例1")': parseDateString('範例1'),
+          'excelDateToString(46024)': excelDateToString(46024),
+          'typeof 46024': typeof 46024,
+        },
+      });
+    } catch (err) {
+      steps.push({ name: '8. parseDateString', value: { error: err.message } });
+    }
+
+    // Step 9: 直接在 production runtime 跑 parseWorkbook，dump 實際 logs（前 3 筆）
+    try {
+      const allSheets = await listAllSpreadsheets(fid, tk);
+      const individualFiles = allSheets.filter((f) => classifyFileType(f.name) === 'individual');
+      if (individualFiles.length === 0) {
+        steps.push({ name: '9. parseWorkbook 實際結果', value: '無 individual 檔' });
+      } else {
+        const file = individualFiles[0];
+        const buffer = await exportSheetAsXlsx(file.id, tk);
+        let logs;
+        let parseError;
+        try {
+          logs = parseWorkbook(buffer, file.name);
+        } catch (err) {
+          parseError = err.message;
+        }
+        steps.push({
+          name: '9. parseWorkbook 實際結果',
+          value: {
+            filename: file.name,
+            log_count: logs?.length ?? 0,
+            first_3_logs: logs?.slice(0, 3) ?? null,
+            parseError,
+          },
+        });
+      }
+    } catch (err) {
+      steps.push({ name: '9. parseWorkbook', value: { error: err.message, stack: err.stack?.slice(0, 300) } });
     }
 
     setDiagnostic(steps);
