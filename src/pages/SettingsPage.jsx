@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Card, Input, Button, Space, Row, Col, Divider, Alert, Spin, Empty } from 'antd';
-import { testConnection } from '../api/gdrive';
+import { testConnection, listAllSpreadsheets, listFilesInFolder } from '../api/gdrive';
+import { classifyFileType } from '../utils/names';
 import { useData } from '../data/DataContext';
 import { useDataLoader } from '../data/useDataLoader';
 import { useAuth } from '../auth/AuthContext';
@@ -153,6 +154,61 @@ export default function SettingsPage() {
       });
     } catch (err) {
       steps.push({ name: '4. Drive API: 列 Folder 子項目', value: { error: err.message } });
+    }
+
+    // Step 5: 對 root folder 的每個 folder 子項目逐一展開一層
+    try {
+      const params = new URLSearchParams({
+        q: `'${fid}' in parents and trashed=false`,
+        fields: 'files(id,name,mimeType)',
+        pageSize: '50',
+        supportsAllDrives: 'true',
+        includeItemsFromAllDrives: 'true',
+        corpora: 'allDrives',
+      });
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
+        headers: { Authorization: `Bearer ${tk}` },
+      });
+      const data = await res.json();
+      const subfolders = (data.files || []).filter((f) => f.mimeType === 'application/vnd.google-apps.folder');
+      const expansions = [];
+      for (const sub of subfolders) {
+        try {
+          const inner = await listFilesInFolder(sub.id, tk);
+          expansions.push({
+            folder: sub.name,
+            count: inner.length,
+            items: inner.map((f) => ({ name: f.name, mimeType: f.mimeType.replace('application/vnd.google-apps.', '') })),
+          });
+        } catch (err) {
+          expansions.push({ folder: sub.name, error: err.message });
+        }
+      }
+      steps.push({ name: '5. 對每個子 folder 各展開一層', value: expansions });
+    } catch (err) {
+      steps.push({ name: '5. 子 folder 展開', value: { error: err.message } });
+    }
+
+    // Step 6: 直接呼叫 listAllSpreadsheets，dump 所有 sheet 與 classifyFileType 結果
+    try {
+      const allSheets = await listAllSpreadsheets(fid, tk);
+      steps.push({
+        name: '6. listAllSpreadsheets 整棵樹遞迴結果',
+        value: {
+          total_sheets: allSheets.length,
+          sheets: allSheets.map((f) => ({
+            name: f.name,
+            classified: classifyFileType(f.name),
+          })),
+          summary_by_classification: allSheets.reduce((acc, f) => {
+            const k = classifyFileType(f.name);
+            acc[k] = (acc[k] || 0) + 1;
+            return acc;
+          }, {}),
+        },
+      });
+    } catch (err) {
+      steps.push({ name: '6. listAllSpreadsheets', value: { error: err.message } });
     }
 
     setDiagnostic(steps);
