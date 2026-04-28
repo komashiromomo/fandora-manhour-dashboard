@@ -17,7 +17,9 @@ import {
 export default function SettingsPage() {
   const { workLogs, salaryData, isLoading, setLoading, clearAll } = useData();
   const { loadFromDrive, handleWorkLogUpload, handleSalaryUpload } = useDataLoader();
-  const { accessToken, requestDriveAccess } = useAuth();
+  const { accessToken, requestDriveAccess, authUser, role } = useAuth();
+  const [diagnostic, setDiagnostic] = useState(null);
+  const [diagnosticLoading, setDiagnosticLoading] = useState(false);
 
   // State for input fields
   const [apiKey, setApiKey] = useState(
@@ -81,6 +83,81 @@ export default function SettingsPage() {
       message: `載入完成：${result.individual} 個個人版檔（共 ${result.total} 個）→ 解析 ${result.parsedFiles} 成功 / ${result.parseErrors} 失敗，共 ${result.logs} 筆工時記錄`,
     });
   }, [handleSaveSettings, loadFromDrive]);
+
+  // === Drive 診斷：實際打 Drive API，把 status / response body 直接顯示在頁面上 ===
+  const handleDiagnose = useCallback(async () => {
+    setDiagnosticLoading(true);
+    const steps = [];
+    const fid = folderId || localStorage.getItem(LS_FOLDER_ID) || '';
+    const tk = accessToken || localStorage.getItem('fandora_access_token') || '';
+
+    steps.push({
+      name: '1. 認證狀態',
+      value: {
+        authUser_email: authUser?.email || null,
+        authUser_name: authUser?.name || null,
+        role,
+        hasAccessToken_state: !!accessToken,
+        hasAccessToken_localStorage: !!localStorage.getItem('fandora_access_token'),
+        accessToken_length: tk.length,
+      },
+    });
+
+    steps.push({
+      name: '2. 設定值',
+      value: {
+        folderId: fid,
+        apiKey_prefix: (apiKey || '').slice(0, 12) + '...',
+        costSheetId_prefix: (costSheetId || '').slice(0, 12) + '...',
+      },
+    });
+
+    // 直接打 Drive API：取 root folder metadata（測權限）
+    try {
+      const url = `https://www.googleapis.com/drive/v3/files/${fid}?fields=id,name,mimeType,driveId,parents,owners(emailAddress),capabilities&supportsAllDrives=true`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${tk}` } });
+      const body = await res.text();
+      let parsed;
+      try { parsed = JSON.parse(body); } catch { parsed = body.slice(0, 500); }
+      steps.push({ name: '3. Drive API: 取 Folder metadata', value: { status: res.status, body: parsed } });
+    } catch (err) {
+      steps.push({ name: '3. Drive API: 取 Folder metadata', value: { error: err.message } });
+    }
+
+    // 列 root folder 直接子項目
+    try {
+      const params = new URLSearchParams({
+        q: `'${fid}' in parents and trashed=false`,
+        fields: 'files(id,name,mimeType,driveId)',
+        pageSize: '50',
+        supportsAllDrives: 'true',
+        includeItemsFromAllDrives: 'true',
+        corpora: 'allDrives',
+      });
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
+        headers: { Authorization: `Bearer ${tk}` },
+      });
+      const body = await res.text();
+      let parsed;
+      try { parsed = JSON.parse(body); } catch { parsed = body.slice(0, 500); }
+      const files = parsed?.files;
+      steps.push({
+        name: '4. Drive API: 列 Folder 子項目',
+        value: {
+          status: res.status,
+          file_count: Array.isArray(files) ? files.length : null,
+          files: Array.isArray(files)
+            ? files.map((f) => ({ name: f.name, mimeType: f.mimeType.replace('application/vnd.google-apps.', ''), driveId: f.driveId || null }))
+            : parsed,
+        },
+      });
+    } catch (err) {
+      steps.push({ name: '4. Drive API: 列 Folder 子項目', value: { error: err.message } });
+    }
+
+    setDiagnostic(steps);
+    setDiagnosticLoading(false);
+  }, [accessToken, authUser, role, folderId, apiKey, costSheetId]);
 
   // Handle clear all data
   const handleClearAll = useCallback(() => {
@@ -223,6 +300,38 @@ export default function SettingsPage() {
             </Col>
           </Row>
         )}
+      </Card>
+
+      {/* Drive 診斷 */}
+      <Card title="Drive 診斷（debug）" style={{ marginBottom: '24px', borderColor: '#1890ff' }}>
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Button type="primary" loading={diagnosticLoading} onClick={handleDiagnose}>
+            執行完整診斷
+          </Button>
+          <div style={{ fontSize: 12, color: '#888' }}>
+            按下會直接打 Drive API（取 folder metadata + 列子項目），把實際 status/response 顯示在下方，方便定位「為什麼讀不到資料」。
+          </div>
+          {diagnostic && (
+            <pre
+              style={{
+                background: '#0a0a0a',
+                color: '#d4d4d4',
+                padding: 16,
+                borderRadius: 4,
+                fontSize: 12,
+                lineHeight: 1.5,
+                overflow: 'auto',
+                maxHeight: 600,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}
+            >
+              {diagnostic
+                .map((s) => `=== ${s.name} ===\n${JSON.stringify(s.value, null, 2)}`)
+                .join('\n\n')}
+            </pre>
+          )}
+        </Space>
       </Card>
 
       {/* Danger Zone */}
