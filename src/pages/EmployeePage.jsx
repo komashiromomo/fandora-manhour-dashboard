@@ -9,19 +9,18 @@ import { useData } from '../data/DataContext';
 import { useAuth } from '../auth/AuthContext';
 import { roundHours } from '../utils/dates';
 import { useTheme } from '../components/ThemeProvider';
+import { calcEmployeeCost } from '../utils/costCalculator';
 
 export default function EmployeePage() {
   const { filteredLogs, salaryData } = useData();
   const { role } = useAuth();
   const { showCost } = useTheme();
 
-  const salaryMap = useMemo(() => {
-    const map = {};
-    salaryData.forEach((r) => {
-      map[r.employee] = (map[r.employee] || 0) + r.salary;
-    });
-    return map;
-  }, [salaryData]);
+  // 個人估算成本（公司管銷 × 個人工時佔比）
+  const employeeCostMap = useMemo(
+    () => calcEmployeeCost(filteredLogs, salaryData),
+    [filteredLogs, salaryData]
+  );
 
   const employeeStats = useMemo(() => {
     const grouped = groupBy(filteredLogs, 'employee');
@@ -29,7 +28,7 @@ export default function EmployeePage() {
       Object.entries(grouped).map(([employee, logs]) => {
         const hours = roundHours(sumBy(logs, 'hours'));
         const days = new Set(logs.map((l) => l.date)).size;
-        const salary = salaryMap[employee] || 0;
+        const cost = Math.round(employeeCostMap[employee] || 0);
         return {
           employee,
           department: logs[0]?.department || '未知',
@@ -37,13 +36,14 @@ export default function EmployeePage() {
           taskCount: new Set(logs.map((l) => l.task)).size,
           days,
           avgDailyHours: days > 0 ? roundHours(hours / days) : 0,
-          costPerHour: hours > 0 && salary > 0 ? Math.round(salary / hours) : null,
+          cost,
+          costPerHour: hours > 0 && cost > 0 ? Math.round(cost / hours) : null,
         };
       }),
       'hours',
       'desc'
     );
-  }, [filteredLogs, salaryMap]);
+  }, [filteredLogs, employeeCostMap]);
 
   const topList = useMemo(
     () =>
@@ -139,7 +139,8 @@ export default function EmployeePage() {
                   <th className="num">任務數</th>
                   <th className="num">出勤天數</th>
                   <th className="num">平均日工時</th>
-                  {showCostCol && <th className="num">時薪成本</th>}
+                  {showCostCol && <th className="num">估算成本</th>}
+                  {showCostCol && <th className="num">平均時薪</th>}
                 </tr>
               </thead>
               <tbody>
@@ -153,6 +154,9 @@ export default function EmployeePage() {
                     <td className="num">{e.taskCount}</td>
                     <td className="num">{e.days}</td>
                     <td className="num">{e.avgDailyHours}</td>
+                    {showCostCol && (
+                      <td className="num">{e.cost ? `$${e.cost.toLocaleString()}` : '—'}</td>
+                    )}
                     {showCostCol && (
                       <td className="num">{e.costPerHour ? `$${e.costPerHour.toLocaleString()}` : '—'}</td>
                     )}

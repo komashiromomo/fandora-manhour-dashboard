@@ -17,7 +17,7 @@ import {
 import FilterToolbar from '../components/FilterToolbar';
 import { useData } from '../data/DataContext';
 import { roundHours, formatMonthDisplay } from '../utils/dates';
-import { calcProjectCost } from '../utils/costCalculator';
+import { totalCompanyCostForLogs } from '../utils/costCalculator';
 
 // IP 配色（前幾名走品牌色 + warm + 多種協調色）
 const IP_PALETTE = [
@@ -35,11 +35,13 @@ export default function OverviewPage() {
     const ipCount = new Set(
       filteredLogs.filter((l) => l.ipProject !== '非授權IP').map((l) => l.ipProject)
     ).size;
-    const totalSalary = sumBy(salaryData, 'salary');
-    const avgCostPerHour = totalHours > 0 && totalSalary > 0
-      ? Math.round(totalSalary / totalHours)
-      : null;
-    return { totalHours, employeeCount, ipCount, totalSalary, avgCostPerHour };
+    // 公司總管銷（把篩選後 logs 涵蓋的月份的管銷加總）
+    const totalCompanyCost = totalCompanyCostForLogs(filteredLogs, salaryData);
+    const avgCostPerHour =
+      totalHours > 0 && totalCompanyCost > 0
+        ? Math.round(totalCompanyCost / totalHours)
+        : null;
+    return { totalHours, employeeCount, ipCount, totalCompanyCost, avgCostPerHour };
   }, [filteredLogs, salaryData]);
 
   // ===== 月度走勢 =====

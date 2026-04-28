@@ -1,172 +1,104 @@
 /**
- * 成本分攤計算器
+ * 成本分攤計算器（v2：以「公司月度管銷總額」為底）
  *
- * 核心公式：
- * 員工在專案的成本 = (專案工時 / 當月總工時) × 月薪
+ * 公式：
+ *   專案 P 在月份 M 的成本 = 該月管銷 × (P 在該月工時 / 全公司在該月總工時)
+ *   累加每月後得到 P 的總成本。部門、員工同理。
+ *
+ * salaryData 結構：[{ month: 'YYYY-MM', total: number, ...details }]
+ *   來自 parseSalarySheet 解析「月度管銷費用表」
  */
 
-/**
- * 按專案計算成本分攤
- *
- * @param {Array} filteredLogs - WorkLog[] 已篩選資料
- * @param {Array} salaryData - SalaryRecord[] 薪資資料
- * @returns {Object} { project1: cost1, project2: cost2, ... }
- */
-export function calcProjectCost(filteredLogs, salaryData) {
-  if (!filteredLogs || filteredLogs.length === 0) return {};
-  if (!salaryData || salaryData.length === 0) return {};
+// 用  當 key 分隔字元，避免部門 / IP 名稱含有常見符號（| / - 等）
+const SEP = '';
 
-  // 構建薪資 map：{ 'employee|month': salary }
-  const salaryMap = {};
-  salaryData.forEach(record => {
-    const key = `${record.employee}|${record.month}`;
-    salaryMap[key] = record.salary;
+/** 把 salaryData 摺成 { month: totalCost } */
+export function buildMonthCostMap(salaryData) {
+  const map = {};
+  if (!Array.isArray(salaryData)) return map;
+  salaryData.forEach((r) => {
+    if (!r?.month) return;
+    const cost = r.total ?? r.salary ?? 0;
+    if (cost > 0) map[r.month] = (map[r.month] || 0) + cost;
+  });
+  return map;
+}
+
+/** 通用：依 key（project/department/employee）計算成本分攤 */
+function calcCostByKey(logs, salaryData, keyFn) {
+  if (!logs?.length || !salaryData?.length) return {};
+  const monthCost = buildMonthCostMap(salaryData);
+
+  const monthHours = {};
+  const keyMonthHours = {};
+
+  logs.forEach((log) => {
+    const k = keyFn(log);
+    if (k == null) return;
+    monthHours[log.month] = (monthHours[log.month] || 0) + log.hours;
+    const ck = `${k}${SEP}${log.month}`;
+    keyMonthHours[ck] = (keyMonthHours[ck] || 0) + log.hours;
   });
 
-  // 按專案、員工、月份分組統計工時
-  // { 'project|employee|month': totalHours }
-  const projectHoursByEmployeeMonth = {};
-  // { 'employee|month': totalHours }
-  const totalHoursByEmployeeMonth = {};
-
-  filteredLogs.forEach(log => {
-    const empMonthKey = `${log.employee}|${log.month}`;
-    const projEmpMonthKey = `${log.ipProject}|${log.employee}|${log.month}`;
-
-    projectHoursByEmployeeMonth[projEmpMonthKey] =
-      (projectHoursByEmployeeMonth[projEmpMonthKey] || 0) + log.hours;
-
-    totalHoursByEmployeeMonth[empMonthKey] =
-      (totalHoursByEmployeeMonth[empMonthKey] || 0) + log.hours;
+  const result = {};
+  Object.entries(keyMonthHours).forEach(([ck, hours]) => {
+    const [key, month] = ck.split(SEP);
+    const totalH = monthHours[month];
+    const cost = monthCost[month];
+    if (!totalH || !cost) return;
+    result[key] = (result[key] || 0) + cost * (hours / totalH);
   });
+  return result;
+}
 
-  // 計算成本
-  const projectCosts = {};
+export function calcProjectCost(logs, salaryData) {
+  return calcCostByKey(logs, salaryData, (l) => l.ipProject);
+}
 
-  Object.entries(projectHoursByEmployeeMonth).forEach(([key, projHours]) => {
-    const [project, employee, month] = key.split('|');
-    const empMonthKey = `${employee}|${month}`;
-    const totalHours = totalHoursByEmployeeMonth[empMonthKey] || 1;
-    const salaryKey = `${employee}|${month}`;
-    const salary = salaryMap[salaryKey] || 0;
+export function calcDeptCost(logs, salaryData) {
+  return calcCostByKey(logs, salaryData, (l) => l.department);
+}
 
-    if (salary <= 0) return; // 無薪資資料，跳過
-
-    const cost = (projHours / totalHours) * salary;
-
-    if (!projectCosts[project]) {
-      projectCosts[project] = 0;
-    }
-    projectCosts[project] += cost;
-  });
-
-  return projectCosts;
+export function calcEmployeeCost(logs, salaryData) {
+  return calcCostByKey(logs, salaryData, (l) => l.employee);
 }
 
 /**
- * 按部門計算成本分攤
- *
- * @param {Array} filteredLogs - WorkLog[] 已篩選資料
- * @param {Array} salaryData - SalaryRecord[] 薪資資料
- * @returns {Object} { dept1: cost1, dept2: cost2, ... }
+ * 員工 × 專案的成本（用於 detail panel）
  */
-export function calcDeptCost(filteredLogs, salaryData) {
-  if (!filteredLogs || filteredLogs.length === 0) return {};
-  if (!salaryData || salaryData.length === 0) return {};
+export function calcEmployeeProjectCost(logs, salaryData) {
+  if (!logs?.length || !salaryData?.length) return {};
+  const monthCost = buildMonthCostMap(salaryData);
+  const monthHours = {};
+  const empProjMonthHours = {};
 
-  // 構建薪資 map
-  const salaryMap = {};
-  salaryData.forEach(record => {
-    const key = `${record.employee}|${record.month}`;
-    salaryMap[key] = record.salary;
+  logs.forEach((l) => {
+    monthHours[l.month] = (monthHours[l.month] || 0) + l.hours;
+    const pk = `${l.employee}${SEP}${l.ipProject}${SEP}${l.month}`;
+    empProjMonthHours[pk] = (empProjMonthHours[pk] || 0) + l.hours;
   });
 
-  // 按部門、員工、月份分組統計工時
-  const deptHoursByEmployeeMonth = {};
-  const totalHoursByEmployeeMonth = {};
-
-  filteredLogs.forEach(log => {
-    const empMonthKey = `${log.employee}|${log.month}`;
-    const deptEmpMonthKey = `${log.department}|${log.employee}|${log.month}`;
-
-    deptHoursByEmployeeMonth[deptEmpMonthKey] =
-      (deptHoursByEmployeeMonth[deptEmpMonthKey] || 0) + log.hours;
-
-    totalHoursByEmployeeMonth[empMonthKey] =
-      (totalHoursByEmployeeMonth[empMonthKey] || 0) + log.hours;
+  const result = {};
+  Object.entries(empProjMonthHours).forEach(([k, hours]) => {
+    const [employee, project, month] = k.split(SEP);
+    const totalH = monthHours[month];
+    const cost = monthCost[month];
+    if (!totalH || !cost) return;
+    const key = `${employee}|${project}`;
+    result[key] = (result[key] || 0) + cost * (hours / totalH);
   });
-
-  // 計算成本
-  const deptCosts = {};
-
-  Object.entries(deptHoursByEmployeeMonth).forEach(([key, deptHours]) => {
-    const [dept, employee, month] = key.split('|');
-    const empMonthKey = `${employee}|${month}`;
-    const totalHours = totalHoursByEmployeeMonth[empMonthKey] || 1;
-    const salaryKey = `${employee}|${month}`;
-    const salary = salaryMap[salaryKey] || 0;
-
-    if (salary <= 0) return; // 無薪資資料，跳過
-
-    const cost = (deptHours / totalHours) * salary;
-
-    if (!deptCosts[dept]) {
-      deptCosts[dept] = 0;
-    }
-    deptCosts[dept] += cost;
-  });
-
-  return deptCosts;
+  return result;
 }
 
 /**
- * 計算員工在特定專案的成本
- * 用於詳細分析
- *
- * @param {Array} filteredLogs - WorkLog[] 已篩選資料
- * @param {Array} salaryData - SalaryRecord[] 薪資資料
- * @returns {Object} { 'employee|project': cost, ... }
+ * 取得篩選後資料對應月份的「公司總管銷」 — Overview 平均時薪用
  */
-export function calcEmployeeProjectCost(filteredLogs, salaryData) {
-  if (!filteredLogs || filteredLogs.length === 0) return {};
-  if (!salaryData || salaryData.length === 0) return {};
-
-  const salaryMap = {};
-  salaryData.forEach(record => {
-    const key = `${record.employee}|${record.month}`;
-    salaryMap[key] = record.salary;
+export function totalCompanyCostForLogs(logs, salaryData) {
+  const monthCost = buildMonthCostMap(salaryData);
+  const monthsWithLogs = new Set((logs || []).map((l) => l.month));
+  let total = 0;
+  monthsWithLogs.forEach((m) => {
+    total += monthCost[m] || 0;
   });
-
-  const empProjHours = {};
-  const totalHoursByEmployeeMonth = {};
-
-  filteredLogs.forEach(log => {
-    const empMonthKey = `${log.employee}|${log.month}`;
-    const empProjKey = `${log.employee}|${log.ipProject}`;
-    const empMonthProjKey = `${log.employee}|${log.month}|${log.ipProject}`;
-
-    empProjHours[empMonthProjKey] =
-      (empProjHours[empMonthProjKey] || 0) + log.hours;
-
-    totalHoursByEmployeeMonth[empMonthKey] =
-      (totalHoursByEmployeeMonth[empMonthKey] || 0) + log.hours;
-  });
-
-  const costs = {};
-
-  Object.entries(empProjHours).forEach(([key, hours]) => {
-    const [employee, month, project] = key.split('|');
-    const empMonthKey = `${employee}|${month}`;
-    const totalHours = totalHoursByEmployeeMonth[empMonthKey] || 1;
-    const salaryKey = `${employee}|${month}`;
-    const salary = salaryMap[salaryKey] || 0;
-
-    if (salary <= 0) return;
-
-    const cost = (hours / totalHours) * salary;
-    const costKey = `${employee}|${project}`;
-    costs[costKey] = (costs[costKey] || 0) + cost;
-  });
-
-  return costs;
+  return total;
 }
