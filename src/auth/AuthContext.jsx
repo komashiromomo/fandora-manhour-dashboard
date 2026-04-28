@@ -39,12 +39,21 @@ export function AuthProvider({ children }) {
     });
   };
 
+  /** UTF-8 safe base64url decode（Google JWT 的 name 欄位常含中文，atob 直解會壞） */
+  const decodeJwtPayload = (jwt) => {
+    const parts = jwt.split('.');
+    if (parts.length !== 3) throw new Error('Invalid JWT');
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const binStr = atob(base64);
+    const bytes = Uint8Array.from(binStr, (c) => c.charCodeAt(0));
+    const json = new TextDecoder('utf-8').decode(bytes);
+    return JSON.parse(json);
+  };
+
   const handleCredentialResponse = (response) => {
     if (!response.credential) { console.warn('[Auth] No credential'); return; }
     try {
-      const parts = response.credential.split('.');
-      if (parts.length !== 3) throw new Error('Invalid JWT');
-      const payload = JSON.parse(atob(parts[1]));
+      const payload = decodeJwtPayload(response.credential);
       const { email, name, picture, hd } = payload;
       if (hd && hd !== ALLOWED_DOMAIN) {
         console.warn(`[Auth] Domain mismatch: got "${hd}", expected "${ALLOWED_DOMAIN}"`);
