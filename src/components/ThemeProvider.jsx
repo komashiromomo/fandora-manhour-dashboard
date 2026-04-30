@@ -12,7 +12,13 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 
 const LS_KEY = 'fandora_v2_tweaks';
-const DEFAULTS = { theme: 'cyan', density: 'spacious', collapsed: false, showCost: true };
+const DEFAULTS = {
+  theme: 'cyan',
+  density: 'spacious',
+  collapsed: false,
+  showCost: true,
+  weeklyReminder: true,
+};
 
 const ThemeContext = createContext(null);
 

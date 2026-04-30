@@ -8,6 +8,7 @@ import LoginScreen from './auth/LoginScreen';
 import Layout from './components/Layout';
 import { ThemeProvider } from './components/ThemeProvider';
 import TweaksPanel from './components/TweaksPanel';
+import WeeklyMisrecordReminder from './components/WeeklyMisrecordReminder';
 
 // Pages
 import OverviewPage from './pages/OverviewPage';
@@ -119,6 +120,7 @@ function AppContent() {
         <PageComponent />
       </Layout>
       <TweaksPanel />
+      <WeeklyMisrecordReminder />
     </DataProvider>
   );
 }

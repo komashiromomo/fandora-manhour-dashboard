@@ -92,7 +92,7 @@ function Toggle({ value, onChange, label }) {
 
 export default function TweaksPanel() {
   const [open, setOpen] = useState(false);
-  const { theme, density, collapsed, showCost, setTweak } = useTheme();
+  const { theme, density, collapsed, showCost, weeklyReminder, setTweak } = useTheme();
 
   return (
     <>
@@ -164,6 +164,13 @@ export default function TweaksPanel() {
           label="顯示成本欄位（admin）"
           value={showCost}
           onChange={(v) => setTweak('showCost', v)}
+        />
+
+        <Section label="提醒" />
+        <Toggle
+          label="每週工時記錄健檢提醒"
+          value={weeklyReminder}
+          onChange={(v) => setTweak('weeklyReminder', v)}
         />
 
         <div
