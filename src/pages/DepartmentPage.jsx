@@ -1,7 +1,7 @@
 /**
  * 部門分析頁 — Fandora V2 設計風格
  */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { groupBy, sumBy, orderBy } from 'lodash-es';
 import {
   KPICard,
@@ -11,6 +11,7 @@ import {
   Empty,
 } from '../components/v2';
 import FilterToolbar from '../components/FilterToolbar';
+import DepartmentDetail from '../components/DepartmentDetail';
 import { useData } from '../data/DataContext';
 import { roundHours } from '../utils/dates';
 import { calcDeptCost } from '../utils/costCalculator';
@@ -24,6 +25,7 @@ const DEPT_PALETTE = [
 export default function DepartmentPage() {
   const { filteredLogs, salaryData } = useData();
   const { showCost } = useTheme();
+  const [selectedDept, setSelectedDept] = useState(null);
 
   const deptCosts = useMemo(() => calcDeptCost(filteredLogs, salaryData), [filteredLogs, salaryData]);
 
@@ -56,7 +58,12 @@ export default function DepartmentPage() {
 
   const topList = useMemo(
     () =>
-      deptStats.map((d) => ({ label: d.dept, value: d.hours, color: d.color })),
+      deptStats.map((d) => ({
+        label: d.dept,
+        value: d.hours,
+        color: d.color,
+        onClick: () => setSelectedDept(d.dept),
+      })),
     [deptStats]
   );
 
@@ -141,7 +148,12 @@ export default function DepartmentPage() {
               </thead>
               <tbody>
                 {deptStats.map((d) => (
-                  <tr key={d.dept}>
+                  <tr
+                    key={d.dept}
+                    onClick={() => setSelectedDept(d.dept)}
+                    style={{ cursor: 'pointer' }}
+                    title="點擊查看進階分析"
+                  >
                     <td>
                       <span className="ip-swatch" style={{ background: d.color, marginRight: 8 }} />
                       {d.dept}
@@ -157,6 +169,8 @@ export default function DepartmentPage() {
           </div>
         </Card>
       </div>
+
+      <DepartmentDetail department={selectedDept} onClose={() => setSelectedDept(null)} />
     </>
   );
 }

@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { groupBy, sumBy, orderBy } from 'lodash-es';
 import { KPICard, Card, Treemap, TopList, Empty } from '../components/v2';
 import FilterToolbar from '../components/FilterToolbar';
+import WorkTypeDetail from '../components/WorkTypeDetail';
 import { useData } from '../data/DataContext';
 import { roundHours } from '../utils/dates';
 import { isKnownIP } from '../utils/names';
@@ -19,6 +20,7 @@ export default function WorkTypePage() {
   const { filteredLogs } = useData();
   const [hideIpNames, setHideIpNames] = useState(true);
   const [showCulprits, setShowCulprits] = useState(false);
+  const [selectedWorkType, setSelectedWorkType] = useState(null);
 
   const allStats = useMemo(() => {
     const grouped = groupBy(filteredLogs, 'workType');
@@ -100,6 +102,7 @@ export default function WorkTypePage() {
         name: s.workType,
         value: s.hours,
         color: s.color,
+        onClick: () => setSelectedWorkType(s.workType),
       })),
     [stats]
   );
@@ -110,6 +113,7 @@ export default function WorkTypePage() {
         label: s.workType,
         value: s.hours,
         color: s.color,
+        onClick: () => setSelectedWorkType(s.workType),
       })),
     [stats]
   );
@@ -311,7 +315,12 @@ export default function WorkTypePage() {
               </thead>
               <tbody>
                 {stats.map((s) => (
-                  <tr key={s.workType}>
+                  <tr
+                    key={s.workType}
+                    onClick={() => setSelectedWorkType(s.workType)}
+                    style={{ cursor: 'pointer' }}
+                    title="點擊查看進階分析"
+                  >
                     <td>
                       <span className="ip-swatch" style={{ background: s.color, marginRight: 8 }} />
                       {s.workType}
@@ -336,6 +345,8 @@ export default function WorkTypePage() {
           </div>
         </Card>
       </div>
+
+      <WorkTypeDetail workType={selectedWorkType} onClose={() => setSelectedWorkType(null)} />
     </>
   );
 }

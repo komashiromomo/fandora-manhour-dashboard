@@ -1,10 +1,11 @@
 /**
  * 人員分析頁 — Fandora V2 設計風格
  */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { groupBy, sumBy, orderBy } from 'lodash-es';
 import { KPICard, Card, TopList, Empty } from '../components/v2';
 import FilterToolbar from '../components/FilterToolbar';
+import EmployeeDetail from '../components/EmployeeDetail';
 import { useData } from '../data/DataContext';
 import { useAuth } from '../auth/AuthContext';
 import { roundHours } from '../utils/dates';
@@ -15,6 +16,7 @@ export default function EmployeePage() {
   const { filteredLogs, salaryData } = useData();
   const { role } = useAuth();
   const { showCost } = useTheme();
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
 
   // 個人估算成本（公司管銷 × 個人工時佔比）
   const employeeCostMap = useMemo(
@@ -50,6 +52,7 @@ export default function EmployeePage() {
       employeeStats.slice(0, 10).map((e) => ({
         label: `${e.employee}（${e.department}）`,
         value: e.hours,
+        onClick: () => setSelectedEmployee(e.employee),
       })),
     [employeeStats]
   );
@@ -145,7 +148,12 @@ export default function EmployeePage() {
               </thead>
               <tbody>
                 {employeeStats.map((e) => (
-                  <tr key={e.employee}>
+                  <tr
+                    key={e.employee}
+                    onClick={() => setSelectedEmployee(e.employee)}
+                    style={{ cursor: 'pointer' }}
+                    title="點擊查看進階分析"
+                  >
                     <td style={{ fontWeight: 600 }}>{e.employee}</td>
                     <td>
                       <span className="tag">{e.department}</span>
@@ -167,6 +175,8 @@ export default function EmployeePage() {
           </div>
         </Card>
       </div>
+
+      <EmployeeDetail employee={selectedEmployee} onClose={() => setSelectedEmployee(null)} />
     </>
   );
 }
