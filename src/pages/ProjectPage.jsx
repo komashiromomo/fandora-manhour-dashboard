@@ -68,7 +68,7 @@ export default function ProjectPage() {
 
   const treemapData = useMemo(
     () =>
-      ipProjects.slice(0, 12).map((p, i) => ({
+      ipProjects.map((p, i) => ({
         name: p.project,
         value: p.hours,
         color: IP_PALETTE[i % IP_PALETTE.length],
@@ -162,7 +162,7 @@ export default function ProjectPage() {
           <TopList items={topList} maxHeight={520} />
         </Card>
 
-        <Card col={12} title="IP 工時 Treemap" sub="區塊面積 = 工時佔比">
+        <Card col={12} title="IP 工時 Treemap" sub={`${treemapData.length} 個 IP · 區塊面積 = 工時佔比`}>
           <Treemap data={treemapData} />
         </Card>
 

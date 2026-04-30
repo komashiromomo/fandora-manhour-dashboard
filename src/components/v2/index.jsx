@@ -272,11 +272,14 @@ export function Heatmap({ rows, cols, data, max }) {
 }
 
 // ============== Treemap ==============
-export function Treemap({ data }) {
+export function Treemap({ data, height }) {
   if (!data?.length) return <div className="empty">無資料</div>;
   const total = data.reduce((s, d) => s + d.value, 0) || 1;
+  const n = data.length;
+  // 自動 height：12 個內 360，更多則隨 tile 數增加
+  const dynamicHeight = height ?? (n <= 12 ? 360 : 360 + Math.ceil((n - 12) / 4) * 100);
   return (
-    <div className="treemap">
+    <div className="treemap" style={{ height: dynamicHeight }}>
       {data.map((t, i) => {
         let span = { col: 3, row: 4 };
         let cls = '';
@@ -285,9 +288,13 @@ export function Treemap({ data }) {
         else if (i < 6) {
           span = { col: 4, row: 6 };
           cls = 'sm';
-        } else {
+        } else if (i < 12) {
           span = { col: 3, row: 4 };
           cls = 'sm';
+        } else {
+          // 第 13 個之後：再小一級的 xs tile，固定 3×3
+          span = { col: 3, row: 3 };
+          cls = 'xs';
         }
         const pct = ((t.value / total) * 100).toFixed(1);
         return (

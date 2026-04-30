@@ -98,7 +98,7 @@ export default function WorkTypePage() {
 
   const treemapData = useMemo(
     () =>
-      stats.slice(0, 12).map((s) => ({
+      stats.map((s) => ({
         name: s.workType,
         value: s.hours,
         color: s.color,
@@ -203,7 +203,7 @@ export default function WorkTypePage() {
       </div>
 
       <div className="grid grid-12">
-        <Card col={12} title="工作項目 Treemap" sub="區塊面積 = 工時佔比">
+        <Card col={12} title="工作項目 Treemap" sub={`${treemapData.length} 項 · 區塊面積 = 工時佔比`}>
           <Treemap data={treemapData} />
         </Card>
 
