@@ -18,6 +18,7 @@ const PALETTE = [
 export default function WorkTypePage() {
   const { filteredLogs } = useData();
   const [hideIpNames, setHideIpNames] = useState(true);
+  const [showCulprits, setShowCulprits] = useState(false);
 
   const allStats = useMemo(() => {
     const grouped = groupBy(filteredLogs, 'workType');
@@ -44,6 +45,52 @@ export default function WorkTypePage() {
   );
   const ipLikeStats = useMemo(() => allStats.filter((s) => s.isIpLike), [allStats]);
   const ipLikeHours = sumBy(ipLikeStats, 'hours');
+
+  // 查出每個誤記項目的「兇手」 — 員工 / 部門 / 工時 / 月份
+  const culprits = useMemo(() => {
+    const ipWorkTypes = new Set(ipLikeStats.map((s) => s.workType));
+    const ipLikeLogs = filteredLogs.filter((l) => ipWorkTypes.has(l.workType));
+    const byKey = groupBy(ipLikeLogs, (l) => `${l.employee}__${l.workType}`);
+    return orderBy(
+      Object.entries(byKey).map(([key, logs]) => {
+        const [employee, workType] = key.split('__');
+        const months = [...new Set(logs.map((l) => l.month))].sort();
+        return {
+          employee,
+          workType,
+          department: logs[0]?.department || '—',
+          hours: roundHours(sumBy(logs, 'hours')),
+          monthCount: months.length,
+          monthRange:
+            months.length === 0
+              ? '—'
+              : months.length === 1
+                ? months[0]
+                : `${months[0]} ~ ${months[months.length - 1]}`,
+          firstDate: orderBy(logs, 'date')[0]?.date || '',
+          lastDate: orderBy(logs, 'date', 'desc')[0]?.date || '',
+        };
+      }),
+      ['hours'],
+      ['desc']
+    );
+  }, [ipLikeStats, filteredLogs]);
+
+  // 「兇手榜」：以員工為單位加總（不分 workType）
+  const culpritsByEmployee = useMemo(() => {
+    const grouped = groupBy(culprits, 'employee');
+    return orderBy(
+      Object.entries(grouped).map(([employee, items]) => ({
+        employee,
+        department: items[0].department,
+        totalHours: roundHours(sumBy(items, 'hours')),
+        ipCount: items.length,
+        ips: items.map((x) => x.workType),
+      })),
+      'totalHours',
+      'desc'
+    );
+  }, [culprits]);
 
   const totalHours = sumBy(stats, 'hours');
 
@@ -141,13 +188,87 @@ export default function WorkTypePage() {
               </div>
             )}
           </div>
-          <button
-            className="btn"
-            onClick={() => setHideIpNames(!hideIpNames)}
-            style={{ flexShrink: 0 }}
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            <button className="btn" onClick={() => setShowCulprits(!showCulprits)}>
+              {showCulprits ? '收起' : '查看是誰寫錯'}
+            </button>
+            <button className="btn" onClick={() => setHideIpNames(!hideIpNames)}>
+              {hideIpNames ? '一併顯示' : '重新隱藏'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showCulprits && ipLikeStats.length > 0 && (
+        <div className="grid grid-12" style={{ marginBottom: 'var(--gap)' }}>
+          <Card
+            col={5}
+            title="員工誤記排行"
+            sub={`${culpritsByEmployee.length} 位員工 · ${Math.round(ipLikeHours).toLocaleString()} 小時`}
           >
-            {hideIpNames ? '一併顯示這些項目' : '重新隱藏'}
-          </button>
+            <div className="tbl-wrap">
+              <table className="tbl">
+                <thead>
+                  <tr>
+                    <th>員工</th>
+                    <th>部門</th>
+                    <th className="num">總時數</th>
+                    <th className="num">誤記項目數</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {culpritsByEmployee.map((c) => (
+                    <tr key={c.employee}>
+                      <td style={{ fontWeight: 600 }}>{c.employee}</td>
+                      <td>
+                        <span className="tag">{c.department}</span>
+                      </td>
+                      <td className="num">{c.totalHours.toLocaleString()}</td>
+                      <td className="num">{c.ipCount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <Card col={7} title="誤記明細" sub="員工 × 工時類型（其實是 IP）">
+            <div className="tbl-wrap" style={{ maxHeight: 480, overflowY: 'auto' }}>
+              <table className="tbl">
+                <thead>
+                  <tr>
+                    <th>員工</th>
+                    <th>誤記為（其實是 IP）</th>
+                    <th className="num">時數</th>
+                    <th>月份範圍</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {culprits.map((c, i) => (
+                    <tr key={`${c.employee}-${c.workType}-${i}`}>
+                      <td style={{ fontWeight: 600 }}>{c.employee}</td>
+                      <td>
+                        <span
+                          className="tag"
+                          style={{
+                            background: 'rgba(242,153,74,0.16)',
+                            color: 'var(--state-warn, #F2994A)',
+                          }}
+                        >
+                          {c.workType}
+                        </span>
+                      </td>
+                      <td className="num">{c.hours.toLocaleString()}</td>
+                      <td style={{ fontSize: 12, color: 'var(--fg-3)' }}>
+                        {c.monthRange}
+                        {c.monthCount > 1 && ` · ${c.monthCount} 個月`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         </div>
       )}
 
