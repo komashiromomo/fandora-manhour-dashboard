@@ -298,8 +298,10 @@ export function Treemap({ data }) {
               background: t.color || 'var(--accent)',
               gridColumn: `span ${span.col}`,
               gridRow: `span ${span.row}`,
+              cursor: t.onClick ? 'pointer' : 'default',
             }}
-            title={`${t.name}: ${t.value}h (${pct}%)`}
+            title={`${t.name}: ${t.value}h (${pct}%)${t.onClick ? ' · 點擊查看詳細' : ''}`}
+            onClick={t.onClick}
           >
             <div className="tile-name">{t.name}</div>
             <div className="tile-val">
@@ -319,7 +321,27 @@ export function TopList({ items, valueLabel = 'h', max }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {items.map((t, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div
+          key={i}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            cursor: t.onClick ? 'pointer' : 'default',
+            padding: t.onClick ? '4px 6px' : 0,
+            margin: t.onClick ? '-4px -6px' : 0,
+            borderRadius: 6,
+            transition: 'background .12s',
+          }}
+          onClick={t.onClick}
+          onMouseEnter={(e) => {
+            if (t.onClick) e.currentTarget.style.background = 'var(--bg-page-alt)';
+          }}
+          onMouseLeave={(e) => {
+            if (t.onClick) e.currentTarget.style.background = 'transparent';
+          }}
+          title={t.onClick ? '點擊查看詳細' : undefined}
+        >
           <div style={{ flex: 1, fontSize: 13, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {t.label || t.name}
           </div>

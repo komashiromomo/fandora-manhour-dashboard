@@ -1,7 +1,7 @@
 /**
  * 專案分析頁 — Fandora V2 設計風格
  */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { groupBy, sumBy, orderBy } from 'lodash-es';
 import {
   KPICard,
@@ -12,6 +12,7 @@ import {
   Empty,
 } from '../components/v2';
 import FilterToolbar from '../components/FilterToolbar';
+import ProjectDetail from '../components/ProjectDetail';
 import { useData } from '../data/DataContext';
 import { roundHours } from '../utils/dates';
 import { calcProjectCost } from '../utils/costCalculator';
@@ -25,6 +26,7 @@ const IP_PALETTE = [
 export default function ProjectPage() {
   const { filteredLogs, salaryData } = useData();
   const { showCost } = useTheme();
+  const [selectedProject, setSelectedProject] = useState(null);
 
   const projectStats = useMemo(() => {
     const grouped = groupBy(filteredLogs, 'ipProject');
@@ -69,6 +71,7 @@ export default function ProjectPage() {
         name: p.project,
         value: p.hours,
         color: IP_PALETTE[i % IP_PALETTE.length],
+        onClick: () => setSelectedProject(p.project),
       })),
     [ipProjects]
   );
@@ -79,6 +82,7 @@ export default function ProjectPage() {
         label: p.project,
         value: p.hours,
         color: IP_PALETTE[i % IP_PALETTE.length],
+        onClick: () => setSelectedProject(p.project),
       })),
     [ipProjects]
   );
@@ -174,7 +178,12 @@ export default function ProjectPage() {
               </thead>
               <tbody>
                 {statsWithCost.map((p) => (
-                  <tr key={p.project}>
+                  <tr
+                    key={p.project}
+                    onClick={() => setSelectedProject(p.project)}
+                    style={{ cursor: 'pointer' }}
+                    title="點擊查看進階分析"
+                  >
                     <td>
                       <span
                         className="ip-swatch"
@@ -189,7 +198,15 @@ export default function ProjectPage() {
                           marginRight: 8,
                         }}
                       />
-                      {p.project}
+                      <span
+                        style={{
+                          textDecoration: 'underline',
+                          textDecorationColor: 'transparent',
+                          transition: 'text-decoration-color .15s',
+                        }}
+                      >
+                        {p.project}
+                      </span>
                     </td>
                     <td className="num">{p.hours.toLocaleString()}</td>
                     <td className="num">{p.employeeCount}</td>
@@ -214,6 +231,8 @@ export default function ProjectPage() {
           </div>
         </Card>
       </div>
+
+      <ProjectDetail project={selectedProject} onClose={() => setSelectedProject(null)} />
     </>
   );
 }
