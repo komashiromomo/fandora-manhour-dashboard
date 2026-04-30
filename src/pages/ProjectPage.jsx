@@ -13,6 +13,7 @@ import {
 } from '../components/v2';
 import FilterToolbar from '../components/FilterToolbar';
 import ProjectDetail from '../components/ProjectDetail';
+import IpMisrecordWarning from '../components/IpMisrecordWarning';
 import { useData } from '../data/DataContext';
 import { roundHours } from '../utils/dates';
 import { calcProjectCost } from '../utils/costCalculator';
@@ -120,6 +121,8 @@ export default function ProjectPage() {
       <div className="toolbar" style={{ marginBottom: 'var(--gap)' }}>
         <FilterToolbar />
       </div>
+
+      <IpMisrecordWarning />
 
       <div className="grid grid-4" style={{ marginBottom: 'var(--gap)' }}>
         <KPICard label="授權 IP 數" value={ipProjects.length} unit="個" />

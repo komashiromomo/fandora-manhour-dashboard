@@ -15,6 +15,7 @@ import { useDataLoader } from '../data/useDataLoader';
 import { useAuth } from '../auth/AuthContext';
 import DragDropUpload from '../components/DragDropUpload';
 import OrgManager from '../components/OrgManager';
+import IpMisrecordWarning from '../components/IpMisrecordWarning';
 import {
   LS_API_KEY,
   LS_FOLDER_ID,
@@ -315,6 +316,8 @@ export default function SettingsPage() {
           </p>
         </div>
       </div>
+
+      <IpMisrecordWarning />
 
       <div className="grid grid-12">
         {/* Drive 設定 */}

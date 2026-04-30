@@ -15,6 +15,7 @@ import {
   Empty,
 } from '../components/v2';
 import FilterToolbar from '../components/FilterToolbar';
+import IpMisrecordWarning from '../components/IpMisrecordWarning';
 import { useData } from '../data/DataContext';
 import { roundHours, formatMonthDisplay } from '../utils/dates';
 import { totalCompanyCostForLogs } from '../utils/costCalculator';
@@ -176,6 +177,8 @@ export default function OverviewPage() {
       <div className="toolbar" style={{ marginBottom: 'var(--gap)' }}>
         <FilterToolbar />
       </div>
+
+      <IpMisrecordWarning />
 
       {/* KPI cards */}
       <div className="grid grid-4" style={{ marginBottom: 'var(--gap)' }}>

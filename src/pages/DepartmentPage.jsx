@@ -12,6 +12,7 @@ import {
 } from '../components/v2';
 import FilterToolbar from '../components/FilterToolbar';
 import DepartmentDetail from '../components/DepartmentDetail';
+import IpMisrecordWarning from '../components/IpMisrecordWarning';
 import { useData } from '../data/DataContext';
 import { roundHours } from '../utils/dates';
 import { calcDeptCost } from '../utils/costCalculator';
@@ -99,6 +100,8 @@ export default function DepartmentPage() {
       <div className="toolbar" style={{ marginBottom: 'var(--gap)' }}>
         <FilterToolbar />
       </div>
+
+      <IpMisrecordWarning />
 
       <div className="grid grid-4" style={{ marginBottom: 'var(--gap)' }}>
         <KPICard label="部門數" value={totalDepts} unit="個" />

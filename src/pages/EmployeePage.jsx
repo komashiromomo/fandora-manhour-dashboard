@@ -6,6 +6,7 @@ import { groupBy, sumBy, orderBy } from 'lodash-es';
 import { KPICard, Card, TopList, Empty } from '../components/v2';
 import FilterToolbar from '../components/FilterToolbar';
 import EmployeeDetail from '../components/EmployeeDetail';
+import IpMisrecordWarning from '../components/IpMisrecordWarning';
 import { useData } from '../data/DataContext';
 import { useAuth } from '../auth/AuthContext';
 import { roundHours } from '../utils/dates';
@@ -93,6 +94,8 @@ export default function EmployeePage() {
       <div className="toolbar" style={{ marginBottom: 'var(--gap)' }}>
         <FilterToolbar />
       </div>
+
+      <IpMisrecordWarning />
 
       <div className="grid grid-4" style={{ marginBottom: 'var(--gap)' }}>
         <KPICard label="員工數" value={employeeStats.length} unit="人" />
