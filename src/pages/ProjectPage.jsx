@@ -79,7 +79,7 @@ export default function ProjectPage() {
 
   const topList = useMemo(
     () =>
-      ipProjects.slice(0, 8).map((p, i) => ({
+      ipProjects.map((p, i) => ({
         label: p.project,
         value: p.hours,
         color: IP_PALETTE[i % IP_PALETTE.length],
@@ -158,8 +158,8 @@ export default function ProjectPage() {
           </div>
         </Card>
 
-        <Card col={8} title="Top 8 授權 IP" sub="點擊條形可下鑽">
-          <TopList items={topList} />
+        <Card col={8} title="授權 IP 工時排行" sub={`${ipProjects.length} 個 IP · 點擊查看詳細`}>
+          <TopList items={topList} maxHeight={520} />
         </Card>
 
         <Card col={12} title="IP 工時 Treemap" sub="區塊面積 = 工時佔比">

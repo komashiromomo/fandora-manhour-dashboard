@@ -316,10 +316,16 @@ export function Treemap({ data }) {
 }
 
 // ============== Top list (橫條 list) ==============
-export function TopList({ items, valueLabel = 'h', max }) {
+export function TopList({ items, valueLabel = 'h', max, maxHeight }) {
   const m = max || Math.max(...items.map((x) => x.value), 1);
+  const containerStyle = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    ...(maxHeight ? { maxHeight, overflowY: 'auto', paddingRight: 4 } : {}),
+  };
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={containerStyle}>
       {items.map((t, i) => (
         <div
           key={i}

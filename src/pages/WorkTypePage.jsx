@@ -109,7 +109,7 @@ export default function WorkTypePage() {
 
   const topList = useMemo(
     () =>
-      stats.slice(0, 10).map((s) => ({
+      stats.map((s) => ({
         label: s.workType,
         value: s.hours,
         color: s.color,
@@ -207,8 +207,8 @@ export default function WorkTypePage() {
           <Treemap data={treemapData} />
         </Card>
 
-        <Card col={5} title="Top 10 工作項目">
-          <TopList items={topList} />
+        <Card col={5} title="工作項目工時排行" sub={`${stats.length} 項 · 點擊查看詳細`}>
+          <TopList items={topList} maxHeight={520} />
         </Card>
 
         <Card col={7} title="完整工作項目統計" sub={`${stats.length} 項`}>

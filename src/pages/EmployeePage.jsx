@@ -50,7 +50,7 @@ export default function EmployeePage() {
 
   const topList = useMemo(
     () =>
-      employeeStats.slice(0, 10).map((e) => ({
+      employeeStats.map((e) => ({
         label: `${e.employee}（${e.department}）`,
         value: e.hours,
         onClick: () => setSelectedEmployee(e.employee),
@@ -130,8 +130,8 @@ export default function EmployeePage() {
       </div>
 
       <div className="grid grid-12">
-        <Card col={12} title="員工工時排行 Top 10" sub="點擊條形可下鑽">
-          <TopList items={topList} />
+        <Card col={12} title="員工工時排行" sub={`${employeeStats.length} 位員工 · 點擊查看詳細`}>
+          <TopList items={topList} maxHeight={520} />
         </Card>
 
         <Card col={12} title="員工統計表" sub={`${employeeStats.length} 位員工`}>
