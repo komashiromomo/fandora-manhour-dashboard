@@ -1,12 +1,13 @@
 /**
  * 工時類型頁 — Fandora V2 設計風格
  */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { groupBy, sumBy, orderBy } from 'lodash-es';
 import { KPICard, Card, Treemap, TopList, Empty } from '../components/v2';
 import FilterToolbar from '../components/FilterToolbar';
 import { useData } from '../data/DataContext';
 import { roundHours } from '../utils/dates';
+import { isKnownIP } from '../utils/names';
 
 const PALETTE = [
   '#00A4C6', '#FF9900', '#9B59B6', '#2BB673', '#E14D4D',
@@ -16,8 +17,9 @@ const PALETTE = [
 
 export default function WorkTypePage() {
   const { filteredLogs } = useData();
+  const [hideIpNames, setHideIpNames] = useState(true);
 
-  const stats = useMemo(() => {
+  const allStats = useMemo(() => {
     const grouped = groupBy(filteredLogs, 'workType');
     const total = sumBy(filteredLogs, 'hours');
     return orderBy(
@@ -28,11 +30,20 @@ export default function WorkTypePage() {
         employeeCount: new Set(logs.map((l) => l.employee)).size,
         projects: [...new Set(logs.map((l) => l.ipProject))],
         color: PALETTE[idx % PALETTE.length],
+        isIpLike: isKnownIP(workType),
       })),
       'hours',
       'desc'
     );
   }, [filteredLogs]);
+
+  // 「工作項目」欄填 IP 名稱是常見錯誤記法 — 預設隱藏並提示
+  const stats = useMemo(
+    () => (hideIpNames ? allStats.filter((s) => !s.isIpLike) : allStats),
+    [allStats, hideIpNames]
+  );
+  const ipLikeStats = useMemo(() => allStats.filter((s) => s.isIpLike), [allStats]);
+  const ipLikeHours = sumBy(ipLikeStats, 'hours');
 
   const totalHours = sumBy(stats, 'hours');
 
@@ -89,6 +100,56 @@ export default function WorkTypePage() {
       <div className="toolbar" style={{ marginBottom: 'var(--gap)' }}>
         <FilterToolbar />
       </div>
+
+      {ipLikeStats.length > 0 && (
+        <div
+          className="card"
+          style={{
+            marginBottom: 'var(--gap)',
+            background: 'rgba(242,153,74,0.08)',
+            borderColor: 'rgba(242,153,74,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+            flexWrap: 'wrap',
+            padding: 16,
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
+              偵測到 {ipLikeStats.length} 個工作項目其實是 IP 名稱
+              <span style={{ fontWeight: 400, color: 'var(--fg-3)', marginLeft: 8 }}>
+                （共 {Math.round(ipLikeHours).toLocaleString()} 小時）
+              </span>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--fg-2)' }}>
+              例如「魔物獵人」「咖波」應該填在工作日誌的「授權IP」欄，「工作項目」欄請填動作（設計、出貨、商開、開會等）。
+              請提醒員工修正記錄方式。
+            </div>
+            {hideIpNames && (
+              <div style={{ marginTop: 8, fontSize: 12, color: 'var(--fg-3)' }}>
+                目前已從統計中隱藏：
+                {ipLikeStats.slice(0, 8).map((s) => (
+                  <span key={s.workType} className="tag" style={{ marginLeft: 4 }}>
+                    {s.workType}（{s.hours}h）
+                  </span>
+                ))}
+                {ipLikeStats.length > 8 && (
+                  <span style={{ marginLeft: 4 }}>等 {ipLikeStats.length} 項</span>
+                )}
+              </div>
+            )}
+          </div>
+          <button
+            className="btn"
+            onClick={() => setHideIpNames(!hideIpNames)}
+            style={{ flexShrink: 0 }}
+          >
+            {hideIpNames ? '一併顯示這些項目' : '重新隱藏'}
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-4" style={{ marginBottom: 'var(--gap)' }}>
         <KPICard label="工作項目數" value={stats.length} unit="項" />
