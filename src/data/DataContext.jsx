@@ -6,12 +6,35 @@ const LS_WORKLOGS = 'fandora_worklogs_cache';
 const LS_SALARY = 'fandora_salary_cache';
 const LS_LAST_SYNCED = 'fandora_last_synced_at';
 
+// 已知的「不可能是真 IP」的污染字串（從舊 parser bug 殘留）
+const POLLUTED_TAGS = new Set([
+  '授權IP', '授權ip', '日期', '工作項目', '工作開始時間', '工作結束時間',
+  '實際時數', '星期', '範例', '範例1', '範例2', '範例 1', '範例 2',
+  '備註', '總計', '人事費', '房租場租', '硬體系統費用', '雜費',
+]);
+
 const readCache = (key) => {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed?.data) ? parsed.data : [];
+    const data = Array.isArray(parsed?.data) ? parsed.data : [];
+
+    // workLogs cache：偵測 header / 範例字串污染。命中就 invalidate（強制下次重抓）
+    if (key === LS_WORKLOGS && data.length > 0) {
+      const hasPollution = data.some(
+        (l) => l && (POLLUTED_TAGS.has(l.ipProject) || POLLUTED_TAGS.has(l.workType))
+      );
+      if (hasPollution) {
+        console.warn(
+          '[DataContext] cache 含 parser bug 殘留的污染資料（如 ipProject="授權IP"），自動清除以強制重抓'
+        );
+        localStorage.removeItem(key);
+        localStorage.removeItem(LS_LAST_SYNCED);
+        return [];
+      }
+    }
+    return data;
   } catch {
     return [];
   }
