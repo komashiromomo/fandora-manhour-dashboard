@@ -10,6 +10,7 @@ import IpMisrecordWarning from '../components/IpMisrecordWarning';
 import { useData } from '../data/DataContext';
 import { roundHours } from '../utils/dates';
 import { isKnownIP } from '../utils/names';
+import { useTheme } from '../components/ThemeProvider';
 
 const PALETTE = [
   '#00A4C6', '#FF9900', '#9B59B6', '#2BB673', '#E14D4D',
@@ -19,6 +20,7 @@ const PALETTE = [
 
 export default function WorkTypePage() {
   const { filteredLogs } = useData();
+  const { customIPs } = useTheme();
   const [hideIpNames, setHideIpNames] = useState(true);
   const [selectedWorkType, setSelectedWorkType] = useState(null);
 
@@ -33,12 +35,12 @@ export default function WorkTypePage() {
         employeeCount: new Set(logs.map((l) => l.employee)).size,
         projects: [...new Set(logs.map((l) => l.ipProject))],
         color: PALETTE[idx % PALETTE.length],
-        isIpLike: isKnownIP(workType),
+        isIpLike: isKnownIP(workType, customIPs),
       })),
       'hours',
       'desc'
     );
-  }, [filteredLogs]);
+  }, [filteredLogs, customIPs]);
 
   // 「工作項目」欄填 IP 名稱是常見錯誤記法 — 預設隱藏並提示
   const stats = useMemo(

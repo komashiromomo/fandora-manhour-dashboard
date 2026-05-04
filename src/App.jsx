@@ -6,7 +6,7 @@ import { DataProvider, useData } from './data/DataContext';
 import { useDataLoader } from './data/useDataLoader';
 import LoginScreen from './auth/LoginScreen';
 import Layout from './components/Layout';
-import { ThemeProvider } from './components/ThemeProvider';
+import { ThemeProvider, useTheme } from './components/ThemeProvider';
 import TweaksPanel from './components/TweaksPanel';
 import WeeklyMisrecordReminder from './components/WeeklyMisrecordReminder';
 
@@ -18,24 +18,41 @@ import EmployeePage from './pages/EmployeePage';
 import DepartmentPage from './pages/DepartmentPage';
 import SettingsPage from './pages/SettingsPage';
 
-/** 認證 + Drive token 都備齊且尚無資料時，自動拉一次 Drive */
+/** 認證 + Drive token 都備齊且尚無資料時，自動拉一次 Drive；
+ *  接著按 Tweaks.autoSyncMinutes 設定，背景定期 silent reload */
 function AutoLoader() {
   const { workLogs } = useData();
   const { accessToken } = useAuth();
   const { loadFromDrive } = useDataLoader();
+  const { autoSyncMinutes } = useTheme();
   const triggered = useRef(false);
 
+  // 首次：未登入過 / 還沒資料 → 立刻拉一次
   useEffect(() => {
     if (!accessToken || triggered.current) return;
     if (workLogs.length > 0) return;
     triggered.current = true;
     loadFromDrive();
-    // 故意只依賴 accessToken：拿到 token 後觸發一次
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken]);
 
+  // 半自動：按 autoSyncMinutes 在背景定期 silent reload
+  useEffect(() => {
+    if (!accessToken) return;
+    if (!autoSyncMinutes || autoSyncMinutes <= 0) return;
+    const interval = setInterval(
+      () => {
+        console.info(`[autoSync] background sync (every ${autoSyncMinutes} min)`);
+        loadFromDrive({ silent: true });
+      },
+      autoSyncMinutes * 60 * 1000
+    );
+    return () => clearInterval(interval);
+  }, [accessToken, autoSyncMinutes, loadFromDrive]);
+
   return null;
 }
+
 
 const PAGE_MAP = {
   overview: OverviewPage,

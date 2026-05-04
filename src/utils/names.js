@@ -90,12 +90,26 @@ export function getDept(realName) {
 /**
  * 判斷是否為已知授權 IP
  * @param {string} name
+ * @param {string[]} [customIPs] - 從 ThemeProvider 傳入的使用者自訂 IP 清單；
+ *                                 不傳時退回讀 localStorage（給非 React 環境用）
  * @returns {boolean}
  */
-export function isKnownIP(name) {
+export function isKnownIP(name, customIPs) {
   if (!name) return false;
   const trimmed = String(name).trim();
-  return KNOWN_IP_LIST.some((ip) => ip === trimmed);
+  if (KNOWN_IP_LIST.some((ip) => ip === trimmed)) return true;
+  // 優先用傳入的 customIPs；沒傳就讀 LS（fallback for parser / non-React 用法）
+  if (Array.isArray(customIPs)) {
+    return customIPs.includes(trimmed);
+  }
+  try {
+    const raw = localStorage.getItem('fandora_custom_ip_list');
+    if (!raw) return false;
+    const list = JSON.parse(raw);
+    return Array.isArray(list) && list.includes(trimmed);
+  } catch {
+    return false;
+  }
 }
 
 /**

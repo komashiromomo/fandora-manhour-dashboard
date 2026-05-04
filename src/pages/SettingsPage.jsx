@@ -15,6 +15,7 @@ import { useDataLoader } from '../data/useDataLoader';
 import { useAuth } from '../auth/AuthContext';
 import DragDropUpload from '../components/DragDropUpload';
 import OrgManager from '../components/OrgManager';
+import IpListManager from '../components/IpListManager';
 import IpMisrecordWarning from '../components/IpMisrecordWarning';
 import {
   LS_API_KEY,
@@ -455,6 +456,9 @@ export default function SettingsPage() {
         <Card col={12} title="組織人員管理" sub="員工 ↔ 部門對照（可覆寫硬編碼）">
           <OrgManager />
         </Card>
+
+        {/* IP 清單管理 */}
+        <IpListManager />
 
         {/* 資料統計 */}
         <Card col={12} title="資料統計">

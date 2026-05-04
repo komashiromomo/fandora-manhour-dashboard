@@ -16,9 +16,11 @@ import {
 import { useTheme } from './ThemeProvider';
 import { isKnownIP } from '../utils/names';
 
+
+
 export default function WorkTypeDetail({ workType, onClose }) {
   const { workLogs, salaryData } = useData();
-  const { showCost } = useTheme();
+  const { showCost, customIPs } = useTheme();
 
   const wtLogs = useMemo(
     () => workLogs.filter((l) => l.workType === workType),
@@ -65,7 +67,7 @@ export default function WorkTypeDetail({ workType, onClose }) {
   );
 
   const open = !!workType;
-  const looksLikeIp = workType && isKnownIP(workType);
+  const looksLikeIp = workType && isKnownIP(workType, customIPs);
 
   return (
     <Drawer

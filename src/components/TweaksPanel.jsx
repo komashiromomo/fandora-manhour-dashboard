@@ -92,7 +92,7 @@ function Toggle({ value, onChange, label }) {
 
 export default function TweaksPanel() {
   const [open, setOpen] = useState(false);
-  const { theme, density, collapsed, showCost, weeklyReminder, setTweak } = useTheme();
+  const { theme, density, collapsed, showCost, weeklyReminder, autoSyncMinutes, setTweak } = useTheme();
 
   return (
     <>
@@ -172,6 +172,22 @@ export default function TweaksPanel() {
           value={weeklyReminder}
           onChange={(v) => setTweak('weeklyReminder', v)}
         />
+
+        <Section label="背景同步" />
+        <Segmented
+          value={String(autoSyncMinutes)}
+          options={[
+            { value: '0', label: '關閉' },
+            { value: '15', label: '15 分' },
+            { value: '30', label: '30 分' },
+            { value: '60', label: '1 時' },
+            { value: '240', label: '4 時' },
+          ]}
+          onChange={(v) => setTweak('autoSyncMinutes', parseInt(v, 10))}
+        />
+        <div style={{ fontSize: 11, color: 'var(--fg-3)', marginTop: 6, lineHeight: 1.5 }}>
+          每 N 分鐘從 Drive 自動拉新資料（不打擾、不彈視窗）。token 過期會靜默放棄這次。
+        </div>
 
         <div
           style={{

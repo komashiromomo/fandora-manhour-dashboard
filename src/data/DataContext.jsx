@@ -4,6 +4,7 @@ const DataContext = createContext(null);
 
 const LS_WORKLOGS = 'fandora_worklogs_cache';
 const LS_SALARY = 'fandora_salary_cache';
+const LS_LAST_SYNCED = 'fandora_last_synced_at';
 
 const readCache = (key) => {
   try {
@@ -31,17 +32,33 @@ export function DataProvider({ children }) {
   const [salaryData, setSalaryDataState] = useState(() => readCache(LS_SALARY));
   const [isLoading, setIsLoadingState] = useState(false);
   const [loadingMessage, setLoadingMessageState] = useState('');
+  const [lastSyncedAt, setLastSyncedAtState] = useState(() => {
+    const raw = localStorage.getItem(LS_LAST_SYNCED);
+    return raw ? parseInt(raw, 10) : null;
+  });
   const [filters, setFiltersState] = useState({
     month: 'all',
     dateFrom: '',
     dateTo: '',
   });
 
-  // ===== 獨立 setter（同時寫 cache） =====
-  const setWorkLogs = useCallback((logs) => {
-    setWorkLogsState(logs);
-    writeCache(LS_WORKLOGS, logs);
+  const markSynced = useCallback(() => {
+    const now = Date.now();
+    setLastSyncedAtState(now);
+    try {
+      localStorage.setItem(LS_LAST_SYNCED, String(now));
+    } catch {}
   }, []);
+
+  // ===== 獨立 setter（同時寫 cache） =====
+  const setWorkLogs = useCallback(
+    (logs) => {
+      setWorkLogsState(logs);
+      writeCache(LS_WORKLOGS, logs);
+      markSynced();
+    },
+    [markSynced]
+  );
   const appendWorkLogs = useCallback((logs) => {
     setWorkLogsState((prev) => {
       const merged = [...prev, ...logs];
@@ -96,9 +113,9 @@ export function DataProvider({ children }) {
 
   const value = {
     workLogs, salaryData, isLoading, loadingMessage, filters,
-    filteredLogs, availableMonths,
+    filteredLogs, availableMonths, lastSyncedAt,
     setWorkLogs, appendWorkLogs, setSalaryData, setFilters,
-    setLoading, clearAll,
+    setLoading, clearAll, markSynced,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

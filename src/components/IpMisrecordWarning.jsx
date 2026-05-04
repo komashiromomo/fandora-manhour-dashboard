@@ -11,14 +11,16 @@ import { useData } from '../data/DataContext';
 import { isKnownIP } from '../utils/names';
 import { roundHours } from '../utils/dates';
 import { Card } from './v2';
+import { useTheme } from './ThemeProvider';
 
 export default function IpMisrecordWarning() {
   const { workLogs } = useData(); // 用全量 workLogs 看整體記錄狀況（不被 filter 限縮）
+  const { customIPs } = useTheme();
   const [open, setOpen] = useState(false);
 
   const ipLikeLogs = useMemo(
-    () => workLogs.filter((l) => isKnownIP(l.workType)),
-    [workLogs]
+    () => workLogs.filter((l) => isKnownIP(l.workType, customIPs)),
+    [workLogs, customIPs]
   );
 
   const ipLikeWorkTypes = useMemo(() => {

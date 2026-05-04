@@ -24,12 +24,12 @@ const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 
 export default function WeeklyMisrecordReminder() {
   const { workLogs } = useData();
-  const { weeklyReminder } = useTheme();
+  const { weeklyReminder, customIPs } = useTheme();
   const [open, setOpen] = useState(false);
 
   const ipLikeLogs = useMemo(
-    () => workLogs.filter((l) => isKnownIP(l.workType)),
-    [workLogs]
+    () => workLogs.filter((l) => isKnownIP(l.workType, customIPs)),
+    [workLogs, customIPs]
   );
 
   const culprits = useMemo(() => {

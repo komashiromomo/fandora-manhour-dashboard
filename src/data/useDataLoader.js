@@ -22,7 +22,11 @@ export function useDataLoader() {
    * - 自動處理 401：用 refreshToken() 取新 access token 後重試一次
    * @returns {Promise<{ok:boolean, total:number, individual:number, skipped:number, parsedFiles:number, parseErrors:number, logs:number, error?:string}>}
    */
-  const loadFromDrive = useCallback(async () => {
+  const loadFromDrive = useCallback(async (opts = {}) => {
+    const { silent = false } = opts;
+    // silent 模式下不彈 loading overlay，autoSync 用
+    const _setLoading = silent ? () => {} : setLoading;
+
     const folderId = getFolderId();
     if (!folderId) {
       return { ok: false, total: 0, individual: 0, skipped: 0, parsedFiles: 0, parseErrors: 0, logs: 0, error: '缺少 Folder ID' };
@@ -30,21 +34,21 @@ export function useDataLoader() {
 
     // 一次完整的載入流程，吃 token 進來；遇到 auth error 就 throw 讓外層重試
     const runOnce = async (token) => {
-      setLoading(true, '正在掃描 Google Drive...');
+      _setLoading(true, '正在掃描 Google Drive...');
       const allFiles = await listAllSpreadsheets(folderId, token);
       const individualFiles = allFiles.filter(
         (f) => classifyFileType(f.name) === 'individual'
       );
       const skipped = allFiles.length - individualFiles.length;
       console.info(
-        `[loadFromDrive] 共找到 ${allFiles.length} 個 sheet，個人版 ${individualFiles.length} 個（跳過 ${skipped}）`
+        `[loadFromDrive${silent ? ' silent' : ''}] 共找到 ${allFiles.length} 個 sheet，個人版 ${individualFiles.length} 個（跳過 ${skipped}）`
       );
 
       let allLogs = [];
       let parseErrors = 0;
       for (let i = 0; i < individualFiles.length; i++) {
         const file = individualFiles[i];
-        setLoading(true, `正在解析 ${file.name} (${i + 1}/${individualFiles.length})`);
+        _setLoading(true, `正在解析 ${file.name} (${i + 1}/${individualFiles.length})`);
         try {
           const buffer = await exportSheetAsXlsx(file.id, token);
           const logs = parseWorkbook(buffer, file.name);
@@ -84,6 +88,10 @@ export function useDataLoader() {
         try {
           token = await tryRefresh(false);
         } catch {
+          if (silent) {
+            // background autoSync：不彈 popup，直接放棄這次
+            return { ok: false, total: 0, individual: 0, skipped: 0, parsedFiles: 0, parseErrors: 0, logs: 0, salaryCount: 0, error: 'silent: no token' };
+          }
           // silent fail → force consent（仍在 user gesture 內，popup 通常允許）
           token = await tryRefresh(true);
         }
@@ -99,7 +107,11 @@ export function useDataLoader() {
           token = await tryRefresh(false);
           result = await runOnce(token);
         } catch (silentErr) {
-          // silent 也 401 / timeout → force consent，彈出 Google 授權視窗
+          if (silent) {
+            // background：不要 force consent（會被 popup blocker 擋），靜默放棄
+            console.info('[loadFromDrive silent] silent refresh failed, skip this round');
+            return { ok: false, total: 0, individual: 0, skipped: 0, parsedFiles: 0, parseErrors: 0, logs: 0, salaryCount: 0, error: 'silent: refresh failed' };
+          }
           console.warn('[loadFromDrive] silent refresh 失敗，改走 force consent');
           token = await tryRefresh(true);
           result = await runOnce(token);
@@ -113,7 +125,7 @@ export function useDataLoader() {
       let salaryCount = 0;
       if (costSheetId) {
         try {
-          setLoading(true, '正在載入薪資表...');
+          _setLoading(true, '正在載入薪資表...');
           const buffer = await exportSheetAsXlsx(costSheetId, token);
           const records = parseSalarySheet(buffer);
           if (records.length > 0) {
@@ -135,7 +147,7 @@ export function useDataLoader() {
       console.error('Drive 載入失敗:', err);
       return { ok: false, total: 0, individual: 0, skipped: 0, parsedFiles: 0, parseErrors: 0, logs: 0, salaryCount: 0, error: err?.message || String(err) };
     } finally {
-      setLoading(false);
+      _setLoading(false);
     }
   }, [accessToken, refreshToken, setWorkLogs, setSalaryData, setLoading]);
 

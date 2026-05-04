@@ -10,6 +10,7 @@ import { Spin, Dropdown } from 'antd';
 import Icon from './Icon';
 import { useAuth } from '../auth/AuthContext';
 import { useData } from '../data/DataContext';
+import { useDataLoader } from '../data/useDataLoader';
 import { useTheme } from './ThemeProvider';
 import { ROLE_TABS } from '../config/constants';
 
@@ -119,7 +120,17 @@ function Sidebar({ active, onNav, collapsed, onToggle, role, authUser, onLogout 
   );
 }
 
+function formatRelative(ts) {
+  if (!ts) return '尚未同步';
+  const diff = Date.now() - ts;
+  if (diff < 60_000) return '剛剛同步';
+  if (diff < 3600_000) return `${Math.floor(diff / 60_000)} 分鐘前同步`;
+  if (diff < 86400_000) return `${Math.floor(diff / 3600_000)} 小時前同步`;
+  return `${Math.floor(diff / 86400_000)} 天前同步`;
+}
+
 function Header({ title, crumb, onCollapse, onRefresh }) {
+  const { lastSyncedAt } = useData();
   return (
     <div className="header">
       <button className="icon-btn" onClick={onCollapse} title="切換側欄">
@@ -130,8 +141,10 @@ function Header({ title, crumb, onCollapse, onRefresh }) {
         <h1>{title}</h1>
       </div>
       <div className="grow" />
-      <div className="live-pulse">即時同步</div>
-      <button className="icon-btn" title="重新整理" onClick={onRefresh}>
+      <div className="live-pulse" title={lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : '尚未同步'}>
+        {formatRelative(lastSyncedAt)}
+      </div>
+      <button className="icon-btn" title="重新整理（強制重抓 Drive）" onClick={onRefresh}>
         <Icon name="refresh" size={16} />
       </button>
     </div>
@@ -142,6 +155,7 @@ export default function Layout({ children, activeTab, onTabChange }) {
   const { authUser, role, logout } = useAuth();
   const { isLoading, loadingMessage } = useData();
   const { collapsed, setTweak } = useTheme();
+  const { loadFromDrive } = useDataLoader();
   const [refreshKey, setRefreshKey] = useState(0);
 
   const meta = PAGE_TITLES[activeTab] || PAGE_TITLES.overview;
@@ -162,7 +176,10 @@ export default function Layout({ children, activeTab, onTabChange }) {
           title={meta.title}
           crumb={meta.crumb}
           onCollapse={() => setTweak('collapsed', !collapsed)}
-          onRefresh={() => setRefreshKey((k) => k + 1)}
+          onRefresh={() => {
+            setRefreshKey((k) => k + 1);
+            loadFromDrive();
+          }}
         />
         <div className="content" key={refreshKey}>
           {children}
