@@ -14,10 +14,11 @@ import {
   calcEntityTotalCost,
 } from '../utils/analyticsHelpers';
 import { useTheme } from './ThemeProvider';
+import { isKnownIP } from '../utils/names';
 
 export default function DepartmentDetail({ department, onClose }) {
   const { workLogs, salaryData } = useData();
-  const { showCost } = useTheme();
+  const { showCost, customIPs } = useTheme();
 
   const deptLogs = useMemo(
     () => workLogs.filter((l) => l.department === department),
@@ -61,10 +62,15 @@ export default function DepartmentDetail({ department, onClose }) {
     () => makeBreakdown(deptLogs, (l) => l.ipProject, kpi.totalHours),
     [deptLogs, kpi.totalHours]
   );
-  const workTypeBreakdown = useMemo(
-    () => makeBreakdown(deptLogs, (l) => l.workType, kpi.totalHours),
-    [deptLogs, kpi.totalHours]
+  const cleanLogsForWorkType = useMemo(
+    () => deptLogs.filter((l) => !isKnownIP(l.workType, customIPs)),
+    [deptLogs, customIPs]
   );
+  const workTypeBreakdown = useMemo(
+    () => makeBreakdown(cleanLogsForWorkType, (l) => l.workType, kpi.totalHours),
+    [cleanLogsForWorkType, kpi.totalHours]
+  );
+  const wtFilteredCount = deptLogs.length - cleanLogsForWorkType.length;
   const monthlyDetail = useMemo(
     () => makeMonthlyDetail(deptLogs, workLogs, salaryData),
     [deptLogs, workLogs, salaryData]
@@ -137,7 +143,15 @@ export default function DepartmentDetail({ department, onClose }) {
             <Card col={4} title="IP 分布" sub={`${ipBreakdown.length} 個`}>
               <TopList items={ipBreakdown.slice(0, 12)} />
             </Card>
-            <Card col={4} title="工作項目" sub={`${workTypeBreakdown.length} 項`}>
+            <Card
+              col={4}
+              title="工作項目"
+              sub={
+                wtFilteredCount > 0
+                  ? `${workTypeBreakdown.length} 項（已排除 ${wtFilteredCount} 筆 IP 誤填）`
+                  : `${workTypeBreakdown.length} 項`
+              }
+            >
               <TopList items={workTypeBreakdown.slice(0, 12)} />
             </Card>
           </div>

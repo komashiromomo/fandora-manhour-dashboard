@@ -14,10 +14,11 @@ import {
   calcEntityTotalCost,
 } from '../utils/analyticsHelpers';
 import { useTheme } from './ThemeProvider';
+import { isKnownIP } from '../utils/names';
 
 export default function EmployeeDetail({ employee, onClose }) {
   const { workLogs, salaryData } = useData();
-  const { showCost } = useTheme();
+  const { showCost, customIPs } = useTheme();
 
   const empLogs = useMemo(
     () => workLogs.filter((l) => l.employee === employee),
@@ -62,10 +63,16 @@ export default function EmployeeDetail({ employee, onClose }) {
     () => makeBreakdown(empLogs, (l) => l.ipProject, kpi.totalHours),
     [empLogs, kpi.totalHours]
   );
-  const workTypeBreakdown = useMemo(
-    () => makeBreakdown(empLogs, (l) => l.workType, kpi.totalHours),
-    [empLogs, kpi.totalHours]
+  // 過濾掉 workType 其實是 IP 名稱的誤填
+  const cleanLogsForWorkType = useMemo(
+    () => empLogs.filter((l) => !isKnownIP(l.workType, customIPs)),
+    [empLogs, customIPs]
   );
+  const workTypeBreakdown = useMemo(
+    () => makeBreakdown(cleanLogsForWorkType, (l) => l.workType, kpi.totalHours),
+    [cleanLogsForWorkType, kpi.totalHours]
+  );
+  const wtFilteredCount = empLogs.length - cleanLogsForWorkType.length;
   const monthlyDetail = useMemo(
     () => makeMonthlyDetail(empLogs, workLogs, salaryData),
     [empLogs, workLogs, salaryData]
@@ -140,7 +147,15 @@ export default function EmployeeDetail({ employee, onClose }) {
                 <Empty title="無" />
               )}
             </Card>
-            <Card col={6} title="工作項目分布" sub={`${workTypeBreakdown.length} 項`}>
+            <Card
+              col={6}
+              title="工作項目分布"
+              sub={
+                wtFilteredCount > 0
+                  ? `${workTypeBreakdown.length} 項（已排除 ${wtFilteredCount} 筆 IP 誤填）`
+                  : `${workTypeBreakdown.length} 項`
+              }
+            >
               {workTypeBreakdown.length > 0 ? (
                 <TopList items={workTypeBreakdown.slice(0, 12)} />
               ) : (

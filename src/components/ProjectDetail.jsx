@@ -10,10 +10,11 @@ import { roundHours, formatMonthDisplay } from '../utils/dates';
 import { useData } from '../data/DataContext';
 import { buildMonthCostMap } from '../utils/costCalculator';
 import { useTheme } from './ThemeProvider';
+import { isKnownIP } from '../utils/names';
 
 export default function ProjectDetail({ project, onClose }) {
   const { workLogs, salaryData } = useData();
-  const { showCost } = useTheme();
+  const { showCost, customIPs } = useTheme();
 
   // 鎖定該專案的 logs（用全量 workLogs，避免被當前 filter 限縮 — detail 要看全貌）
   const projectLogs = useMemo(
@@ -79,8 +80,10 @@ export default function ProjectDetail({ project, onClose }) {
   );
 
   // ===== 工作項目 breakdown =====
+  // 過濾掉「workType 其實是 IP 名稱」的誤填條目，避免「老高與小茉的工作項目分布裡出現魔物獵人」
   const taskBreakdown = useMemo(() => {
-    const grouped = groupBy(projectLogs, 'task');
+    const filtered = projectLogs.filter((l) => !isKnownIP(l.task, customIPs));
+    const grouped = groupBy(filtered, 'task');
     return orderBy(
       Object.entries(grouped).map(([task, logs]) => ({
         label: task || '未分類',
@@ -90,7 +93,12 @@ export default function ProjectDetail({ project, onClose }) {
       'value',
       'desc'
     );
-  }, [projectLogs]);
+  }, [projectLogs, customIPs]);
+
+  const filteredOutByIp = useMemo(
+    () => projectLogs.filter((l) => isKnownIP(l.task, customIPs)).length,
+    [projectLogs, customIPs]
+  );
 
   // ===== 員工貢獻 =====
   const employeeBreakdown = useMemo(() => {
@@ -227,7 +235,15 @@ export default function ProjectDetail({ project, onClose }) {
 
           {/* 工作項目 + 員工貢獻 + 部門貢獻 */}
           <div className="grid grid-12" style={{ marginBottom: 'var(--gap)' }}>
-            <Card col={6} title="工作項目分布" sub={`${taskBreakdown.length} 項`}>
+            <Card
+              col={6}
+              title="工作項目分布"
+              sub={
+                filteredOutByIp > 0
+                  ? `${taskBreakdown.length} 項（已排除 ${filteredOutByIp} 筆把 IP 當工作項目的誤填）`
+                  : `${taskBreakdown.length} 項`
+              }
+            >
               {taskBreakdown.length > 0 ? (
                 <TopList items={taskBreakdown.slice(0, 10)} />
               ) : (
