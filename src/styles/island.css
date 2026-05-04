@@ -1,0 +1,476 @@
+/* ----------------------------------------------------------
+   動森島嶼 Skin（Animal Crossing 風）
+   啟用條件：<html data-style="island">
+   ---------------------------------------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka:wght@400;500;600;700&display=swap');
+
+[data-style='island'] {
+  --ink: #3D2E1E;
+  --ink-2: #6B5840;
+  --ink-3: #9C8A6E;
+  --paper: #FFFCF0;
+  --paper-2: #F4E6BB;
+  --leaf: #7CC576;
+  --leaf-2: #5BAE5B;
+  --leaf-d: #3F8A3F;
+  --leaf-tint: #E8F5DD;
+  --sky: #9FE0EF;
+  --sky-tint: #DBF1F7;
+  --sand: #FFF6DC;
+  --pink: #FFB7C5;
+  --peach: #FFC89A;
+  --lemon: #FFE48A;
+  --berry: #E36B7A;
+  --bell: #F4C430;
+  --shadow-soft: 0 6px 0 rgba(61, 46, 30, 0.08), 0 12px 24px rgba(61, 46, 30, 0.06);
+  --shadow-3d: 0 3px 0 var(--ink);
+
+  /* 蓋掉 fandora-tokens 的部分變數，讓既有 class 自動取色 */
+  --accent: var(--leaf-d);
+  --accent-hover: var(--leaf);
+  --accent-tint: var(--leaf-tint);
+  --bg-page-alt: var(--sand);
+  --bg-surface: var(--paper);
+  --bg-surface-alt: var(--sand);
+  --fg-1: var(--ink);
+  --fg-2: var(--ink-2);
+  --fg-3: var(--ink-3);
+  --fg-muted: var(--ink-3);
+  --border-1: var(--paper-2);
+  --border-2: var(--ink);
+  --r-md: 14px;
+  --r-lg: 20px;
+}
+
+/* 季節背景 — 沒設 season 時走 spring */
+[data-style='island'] body,
+[data-style='island'][data-season='spring'] body {
+  font-family: 'Nunito', 'Noto Sans TC', system-ui, sans-serif;
+  font-weight: 600;
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse 800px 400px at 20% -10%, rgba(159, 224, 239, 0.5), transparent 60%),
+    radial-gradient(ellipse 700px 500px at 100% 100%, rgba(255, 200, 154, 0.3), transparent 60%),
+    linear-gradient(180deg, #fff8e0 0%, #ffefc8 60%, #fce5b0 100%);
+  background-attachment: fixed;
+}
+[data-style='island'][data-season='summer'] body {
+  background:
+    radial-gradient(ellipse 800px 400px at 20% -10%, rgba(255, 228, 138, 0.5), transparent 60%),
+    radial-gradient(ellipse 700px 500px at 100% 100%, rgba(124, 197, 118, 0.3), transparent 60%),
+    linear-gradient(180deg, #dbf1f7 0%, #c8e8f0 60%, #b0dde7 100%);
+  background-attachment: fixed;
+}
+[data-style='island'][data-season='autumn'] body {
+  background:
+    radial-gradient(ellipse 800px 400px at 20% -10%, rgba(228, 107, 122, 0.4), transparent 60%),
+    radial-gradient(ellipse 700px 500px at 100% 100%, rgba(255, 180, 77, 0.3), transparent 60%),
+    linear-gradient(180deg, #ffe4c0 0%, #ffd09a 60%, #f4b070 100%);
+  background-attachment: fixed;
+}
+[data-style='island'][data-season='winter'] body {
+  background:
+    radial-gradient(ellipse 800px 400px at 20% -10%, rgba(159, 224, 239, 0.5), transparent 60%),
+    radial-gradient(ellipse 700px 500px at 100% 100%, rgba(166, 107, 179, 0.2), transparent 60%),
+    linear-gradient(180deg, #e8eef5 0%, #d8e2ee 60%, #c8d5e5 100%);
+  background-attachment: fixed;
+}
+
+/* 紙質紋理 overlay */
+[data-style='island'] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(circle at 5% 20%, rgba(255, 255, 255, 0.4) 1px, transparent 2px),
+    radial-gradient(circle at 80% 60%, rgba(255, 255, 255, 0.3) 1px, transparent 2px),
+    radial-gradient(circle at 50% 80%, rgba(255, 255, 255, 0.25) 1px, transparent 2px);
+  background-size: 60px 60px, 80px 80px, 50px 50px;
+  opacity: 0.6;
+}
+
+/* ============== Sidebar ============== */
+[data-style='island'] .sidebar {
+  background: rgba(255, 252, 240, 0.92);
+  backdrop-filter: blur(12px);
+  border-right: 3px solid var(--paper-2);
+}
+[data-style='island'] .sb-brand {
+  border-bottom: 2px dashed var(--paper-2);
+}
+[data-style='island'] .sb-brand-mark {
+  background: var(--leaf);
+  border: 3px solid var(--paper);
+  box-shadow: 0 4px 0 var(--leaf-d);
+  border-radius: 50%;
+  font-size: 0;
+  position: relative;
+}
+[data-style='island'] .sb-brand-mark::after {
+  content: '🍃';
+  font-size: 22px;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+[data-style='island'] .sb-brand-text b {
+  font-family: 'Fredoka', 'Nunito', sans-serif;
+}
+[data-style='island'] .sb-section {
+  font-weight: 800;
+  color: var(--ink-3);
+}
+[data-style='island'] .sb-item {
+  font-weight: 800;
+  border-radius: 100px;
+  border: 2px solid transparent;
+  color: var(--ink-2);
+}
+[data-style='island'] .sb-item:hover {
+  background: var(--leaf-tint);
+}
+[data-style='island'] .sb-item.active {
+  background: var(--leaf);
+  color: #fff;
+  border-color: var(--leaf-d);
+  box-shadow: var(--shadow-3d);
+}
+[data-style='island'] .sb-foot {
+  border-top: 2px dashed var(--paper-2);
+}
+[data-style='island'] .sb-avatar {
+  border: 2px solid var(--ink);
+  box-shadow: 0 2px 0 var(--ink);
+}
+
+/* ============== Header ============== */
+[data-style='island'] .header {
+  background: linear-gradient(180deg, rgba(255, 252, 240, 0.85), rgba(255, 252, 240, 0.6));
+  border-bottom: 3px solid var(--paper-2);
+  backdrop-filter: blur(12px);
+}
+[data-style='island'] .header-title h1 {
+  font-family: 'Fredoka', 'Nunito', sans-serif;
+  color: var(--ink);
+}
+[data-style='island'] .header-title .crumb {
+  color: var(--leaf-d);
+  font-weight: 800;
+}
+[data-style='island'] .icon-btn {
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  box-shadow: 0 3px 0 var(--ink);
+  border-radius: 50%;
+}
+[data-style='island'] .icon-btn:hover {
+  transform: translateY(-1px);
+}
+[data-style='island'] .live-pulse {
+  background: var(--sand);
+  border: 2px solid var(--ink);
+  border-radius: 100px;
+  box-shadow: 0 3px 0 var(--ink);
+  font-weight: 800;
+  color: var(--ink);
+}
+
+/* ============== Card / KPI ============== */
+[data-style='island'] .card {
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-soft);
+}
+[data-style='island'] .card-head {
+  border-bottom: 2px dashed var(--paper-2);
+  padding-bottom: 12px;
+}
+[data-style='island'] .card-head h3 {
+  font-family: 'Fredoka', 'Nunito', sans-serif;
+  font-weight: 700;
+  color: var(--ink);
+}
+[data-style='island'] .card-head .sub {
+  color: var(--ink-3);
+  font-weight: 700;
+}
+
+[data-style='island'] .kpi {
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-soft);
+  position: relative;
+  overflow: visible;
+}
+[data-style='island'] .kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 0 rgba(61, 46, 30, 0.1), 0 18px 32px rgba(61, 46, 30, 0.08);
+  border-color: var(--ink);
+}
+[data-style='island'] .kpi-label {
+  font-weight: 800;
+  color: var(--ink-2);
+  font-family: 'Nunito', 'Noto Sans TC', sans-serif;
+}
+[data-style='island'] .kpi-label .dot {
+  background: var(--leaf);
+}
+[data-style='island'] .kpi-value {
+  font-family: 'Fredoka', 'Nunito', sans-serif;
+  color: var(--ink);
+}
+[data-style='island'] .kpi-delta.up {
+  background: var(--leaf-tint);
+  color: var(--leaf-d);
+}
+[data-style='island'] .kpi-delta.down {
+  background: #ffe0e5;
+  color: var(--berry);
+}
+
+/* ============== Page hero ============== */
+[data-style='island'] .page-hero h1 {
+  font-family: 'Fredoka', 'Nunito', sans-serif;
+  color: var(--ink);
+}
+[data-style='island'] .page-hero .eyebrow {
+  color: var(--leaf-d);
+  font-weight: 800;
+}
+[data-style='island'] .page-hero .sub {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+[data-style='island'] .hero-decor {
+  background: radial-gradient(circle, var(--leaf) 0%, transparent 70%);
+  opacity: 0.18;
+}
+
+/* ============== Buttons ============== */
+[data-style='island'] .btn {
+  border: 2px solid var(--ink);
+  border-radius: 100px;
+  box-shadow: 0 3px 0 var(--ink);
+  font-weight: 800;
+  font-family: 'Nunito', 'Noto Sans TC', sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+[data-style='island'] .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 0 var(--ink);
+  background: var(--paper);
+}
+[data-style='island'] .btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+[data-style='island'] .btn--primary {
+  background: var(--leaf);
+  color: #fff;
+  border-color: var(--leaf-d);
+  box-shadow: 0 3px 0 var(--leaf-d);
+}
+[data-style='island'] .btn--primary:hover {
+  background: var(--leaf);
+  border-color: var(--leaf-d);
+  box-shadow: 0 4px 0 var(--leaf-d);
+}
+
+/* ============== Toolbar / chip / search / seg ============== */
+[data-style='island'] .toolbar {
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-soft);
+}
+[data-style='island'] .chip,
+[data-style='island'] .search {
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 100px;
+  font-weight: 700;
+  color: var(--ink);
+}
+[data-style='island'] .chip:hover {
+  background: var(--paper);
+}
+[data-style='island'] .seg {
+  background: var(--paper-2);
+  border: 2px solid var(--ink);
+  border-radius: 100px;
+  box-shadow: 0 2px 0 var(--ink);
+  padding: 3px;
+}
+[data-style='island'] .seg button {
+  font-weight: 800;
+  border-radius: 100px;
+}
+[data-style='island'] .seg button.on {
+  background: var(--leaf);
+  color: #fff;
+  box-shadow: none;
+}
+
+/* ============== Tag ============== */
+[data-style='island'] .tag {
+  border: 1.5px solid var(--ink);
+  border-radius: 100px;
+  font-weight: 800;
+  background: var(--paper-2);
+  color: var(--ink);
+}
+[data-style='island'] .tag.brand {
+  background: var(--leaf-tint);
+  color: var(--leaf-d);
+}
+
+/* ============== Table ============== */
+[data-style='island'] .tbl thead th {
+  background: transparent;
+  font-weight: 800;
+  color: var(--ink-2);
+  border-bottom: 2px dashed var(--paper-2);
+}
+[data-style='island'] .tbl tbody td {
+  border-bottom: 2px dashed var(--paper-2);
+  color: var(--ink);
+  font-weight: 600;
+}
+[data-style='island'] .tbl tbody tr:hover {
+  background: var(--leaf-tint);
+}
+[data-style='island'] .tbl .num {
+  font-family: 'Fredoka', 'Nunito', sans-serif;
+  font-weight: 700;
+}
+
+/* ============== Heatmap / Treemap ============== */
+[data-style='island'] .heatmap .cell {
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  box-shadow: 0 2px 0 rgba(61, 46, 30, 0.12);
+}
+[data-style='island'] .tile {
+  border: 2.5px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 0 3px 0 var(--ink);
+  font-weight: 800;
+}
+[data-style='island'] .tile-name,
+[data-style='island'] .tile-val {
+  font-family: 'Fredoka', 'Nunito', sans-serif;
+}
+
+/* ============== Drawer (Antd) ============== */
+[data-style='island'] .ant-drawer-content {
+  background: linear-gradient(180deg, #fffcf0, #fff6dc);
+}
+[data-style='island'] .ant-drawer-header {
+  border-bottom: 2px dashed var(--paper-2);
+}
+[data-style='island'] .ant-drawer-title {
+  font-family: 'Fredoka', 'Nunito', sans-serif;
+  color: var(--ink);
+}
+
+/* ============== Modal ============== */
+[data-style='island'] .ant-modal-content {
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-soft);
+}
+[data-style='island'] .ant-modal-title {
+  font-family: 'Fredoka', 'Nunito', sans-serif;
+  color: var(--ink);
+}
+
+/* ============== Antd Input/Button override ============== */
+[data-style='island'] .ant-input {
+  border: 2px solid var(--ink) !important;
+  border-radius: 100px !important;
+  font-weight: 700;
+  background: var(--paper);
+}
+[data-style='island'] .ant-btn-default {
+  border: 2px solid var(--ink) !important;
+  border-radius: 100px !important;
+  box-shadow: 0 3px 0 var(--ink) !important;
+  font-weight: 800;
+  background: var(--paper);
+}
+[data-style='island'] .ant-btn-primary {
+  background: var(--leaf) !important;
+  border-color: var(--leaf-d) !important;
+  box-shadow: 0 3px 0 var(--leaf-d) !important;
+  color: #fff;
+  font-weight: 800;
+  border-radius: 100px !important;
+}
+
+/* ============== TweaksPanel FAB（齒輪鈕）動森皮 ============== */
+[data-style='island'] .twk-fab {
+  background: var(--leaf);
+  border: 3px solid var(--leaf-d);
+  box-shadow: 0 4px 0 var(--leaf-d);
+}
+
+/* ============== 漂浮樹葉動畫 ============== */
+.island-leaves {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.island-leaf {
+  position: absolute;
+  opacity: 0.4;
+  animation: islandFloat 12s ease-in-out infinite;
+}
+.island-leaf:nth-child(1) {
+  top: 8%;
+  left: 6%;
+  animation-delay: 0s;
+}
+.island-leaf:nth-child(2) {
+  top: 60%;
+  left: 92%;
+  animation-delay: -3s;
+}
+.island-leaf:nth-child(3) {
+  top: 30%;
+  left: 95%;
+  animation-delay: -6s;
+}
+.island-leaf:nth-child(4) {
+  top: 80%;
+  left: 4%;
+  animation-delay: -9s;
+}
+.island-leaf:nth-child(5) {
+  top: 5%;
+  left: 60%;
+  animation-delay: -4s;
+}
+@keyframes islandFloat {
+  0%, 100% {
+    transform: translateY(0) rotate(-8deg);
+  }
+  50% {
+    transform: translateY(-22px) rotate(8deg);
+  }
+}
+
+/* 內容區提到 z-index 之上以蓋過葉子 */
+[data-style='island'] .app {
+  position: relative;
+  z-index: 1;
+}

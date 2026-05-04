@@ -9,6 +9,7 @@ import Layout from './components/Layout';
 import { ThemeProvider, useTheme } from './components/ThemeProvider';
 import TweaksPanel from './components/TweaksPanel';
 import WeeklyMisrecordReminder from './components/WeeklyMisrecordReminder';
+import IslandLeaves from './components/IslandLeaves';
 
 // Pages
 import OverviewPage from './pages/OverviewPage';
@@ -133,6 +134,7 @@ function AppContent() {
   return (
     <DataProvider>
       <AutoLoader />
+      <IslandLeaves />
       <Layout activeTab={activeTab} onTabChange={setActiveTab}>
         <PageComponent />
       </Layout>

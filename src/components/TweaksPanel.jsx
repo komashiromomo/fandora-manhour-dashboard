@@ -92,7 +92,10 @@ function Toggle({ value, onChange, label }) {
 
 export default function TweaksPanel() {
   const [open, setOpen] = useState(false);
-  const { theme, density, collapsed, showCost, weeklyReminder, autoSyncMinutes, setTweak } = useTheme();
+  const {
+    theme, density, collapsed, showCost, weeklyReminder, autoSyncMinutes,
+    style, season, showLeaves, setTweak,
+  } = useTheme();
 
   return (
     <>
@@ -134,7 +137,39 @@ export default function TweaksPanel() {
           header: { padding: '16px 20px', borderBottom: '1px solid var(--border-1)' },
         }}
       >
-        <Section label="主題色系" />
+        <Section label="設計風格" />
+        <Segmented
+          value={style}
+          options={[
+            { value: 'simple', label: '✨ 簡潔' },
+            { value: 'island', label: '🌿 動森' },
+          ]}
+          onChange={(v) => setTweak('style', v)}
+        />
+
+        {style === 'island' && (
+          <>
+            <div style={{ height: 12 }} />
+            <Segmented
+              value={season}
+              options={[
+                { value: 'spring', label: '🌸 春' },
+                { value: 'summer', label: '☀️ 夏' },
+                { value: 'autumn', label: '🍂 秋' },
+                { value: 'winter', label: '❄️ 冬' },
+              ]}
+              onChange={(v) => setTweak('season', v)}
+            />
+            <div style={{ height: 6 }} />
+            <Toggle
+              label="飄落樹葉動畫"
+              value={showLeaves}
+              onChange={(v) => setTweak('showLeaves', v)}
+            />
+          </>
+        )}
+
+        <Section label="主題色系（簡潔）" />
         <Segmented
           value={theme}
           options={[

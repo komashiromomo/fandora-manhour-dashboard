@@ -20,6 +20,10 @@ const DEFAULTS = {
   showCost: true,
   weeklyReminder: true,
   autoSyncMinutes: 30, // 0=關閉，其他數字為分鐘數
+  // 整體風格（樣式皮膚）
+  style: 'simple', // 'simple'（簡潔）| 'island'（動森島嶼）
+  season: 'spring', // 'spring'|'summer'|'autumn'|'winter'，僅 island 模式有作用
+  showLeaves: true, // 動森模式飄落樹葉
 };
 
 const ThemeContext = createContext(null);
@@ -81,7 +85,9 @@ export function ThemeProvider({ children }) {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', tweaks.theme);
     document.documentElement.setAttribute('data-density', tweaks.density);
-  }, [tweaks.theme, tweaks.density]);
+    document.documentElement.setAttribute('data-style', tweaks.style);
+    document.documentElement.setAttribute('data-season', tweaks.season);
+  }, [tweaks.theme, tweaks.density, tweaks.style, tweaks.season]);
 
   return (
     <ThemeContext.Provider
