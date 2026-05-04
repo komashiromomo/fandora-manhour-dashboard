@@ -272,19 +272,34 @@ export function parseIndividualSheets(workbook, filename) {
       let lastIP = '';
       let lastTask = '';
 
+      // 是否為「實際工作日期」：數字（Excel serial）或 M/D / YYYY/MM/DD 字串
+      // 任何不符合的（header「日期」、範例 1/2、空白等）都不算正式記錄
+      const isWorkDate = (raw) => {
+        if (raw == null) return false;
+        if (typeof raw === 'number') return raw >= 10000 && raw <= 80000;
+        const s = String(raw).trim();
+        if (!s) return false;
+        // 移除星期後綴 "（五）"
+        const cleaned = s.replace(/[（(][^）)]*[）)]/g, '').trim();
+        return (
+          /^\d{1,2}[\/\-]\d{1,2}$/.test(cleaned) ||
+          /^\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}/.test(cleaned)
+        );
+      };
+
       // 解析資料列
       for (let i = dataStartIdx; i < rows.length; i++) {
         const row = rows[i];
         if (!row || row.length === 0) continue;
 
         const rawDate = row[dateColIdx];
-        const dateStr = String(rawDate ?? '').trim();
 
-        // 範例列（A 欄填「範例 1」「範例 2」「example 1」等）— 整列跳過，且不 carry-forward
-        // 否則範例列的 IP / 工作項目會 carry-forward 到後續正常列，造成資料污染
-        if (/^範例\s*\d*$|^example\s*\d*$|^示例\s*\d*$/i.test(dateStr)) continue;
+        // 嚴格規則：只有實際工作日期的 row 才算正式工作記錄
+        // 涵蓋 header（"日期"）、範例 1/2、空白、其他標記列 — 全部跳過、不 carry-forward
+        if (!isWorkDate(rawDate)) continue;
 
-        const hasDate = rawDate !== undefined && rawDate !== null && dateStr !== '';
+        const dateStr = String(rawDate).trim();
+        const hasDate = true;
         const ipVal = String(row[ipColIdx] || '').trim();
         const taskVal = String(row[taskColIdx] || '').trim();
         const hoursVal = row[hoursColIdx];
