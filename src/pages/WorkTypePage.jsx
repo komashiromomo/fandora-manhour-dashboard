@@ -11,6 +11,7 @@ import { useData } from '../data/DataContext';
 import { roundHours } from '../utils/dates';
 import { isKnownIP } from '../utils/names';
 import { useTheme } from '../components/ThemeProvider';
+import { useRoute } from '../router/RouteProvider';
 
 const PALETTE = [
   '#00A4C6', '#FF9900', '#9B59B6', '#2BB673', '#E14D4D',
@@ -22,7 +23,7 @@ export default function WorkTypePage() {
   const { filteredLogs } = useData();
   const { customIPs } = useTheme();
   const [hideIpNames, setHideIpNames] = useState(true);
-  const [selectedWorkType, setSelectedWorkType] = useState(null);
+  const { openEntity } = useRoute();
 
   const allStats = useMemo(() => {
     const grouped = groupBy(filteredLogs, 'workType');
@@ -104,7 +105,7 @@ export default function WorkTypePage() {
         name: s.workType,
         value: s.hours,
         color: s.color,
-        onClick: () => setSelectedWorkType(s.workType),
+        onClick: () => openEntity(s.workType),
       })),
     [stats]
   );
@@ -115,7 +116,7 @@ export default function WorkTypePage() {
         label: s.workType,
         value: s.hours,
         color: s.color,
-        onClick: () => setSelectedWorkType(s.workType),
+        onClick: () => openEntity(s.workType),
       })),
     [stats]
   );
@@ -228,7 +229,7 @@ export default function WorkTypePage() {
                 {stats.map((s) => (
                   <tr
                     key={s.workType}
-                    onClick={() => setSelectedWorkType(s.workType)}
+                    onClick={() => openEntity(s.workType)}
                     style={{ cursor: 'pointer' }}
                     title="點擊查看進階分析"
                   >
@@ -257,7 +258,7 @@ export default function WorkTypePage() {
         </Card>
       </div>
 
-      <WorkTypeDetail workType={selectedWorkType} onClose={() => setSelectedWorkType(null)} />
+      <WorkTypeDetail />
     </>
   );
 }

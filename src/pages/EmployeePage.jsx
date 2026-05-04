@@ -1,12 +1,13 @@
 /**
  * 人員分析頁 — Fandora V2 設計風格
  */
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { groupBy, sumBy, orderBy } from 'lodash-es';
 import { KPICard, Card, TopList, Empty } from '../components/v2';
 import FilterToolbar from '../components/FilterToolbar';
 import EmployeeDetail from '../components/EmployeeDetail';
 import IpMisrecordWarning from '../components/IpMisrecordWarning';
+import { useRoute } from '../router/RouteProvider';
 import { useData } from '../data/DataContext';
 import { useAuth } from '../auth/AuthContext';
 import { roundHours } from '../utils/dates';
@@ -17,7 +18,7 @@ export default function EmployeePage() {
   const { filteredLogs, salaryData } = useData();
   const { role } = useAuth();
   const { showCost } = useTheme();
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const { openEntity } = useRoute();
 
   // 個人估算成本（公司管銷 × 個人工時佔比）
   const employeeCostMap = useMemo(
@@ -53,7 +54,7 @@ export default function EmployeePage() {
       employeeStats.map((e) => ({
         label: `${e.employee}（${e.department}）`,
         value: e.hours,
-        onClick: () => setSelectedEmployee(e.employee),
+        onClick: () => openEntity(e.employee),
       })),
     [employeeStats]
   );
@@ -153,7 +154,7 @@ export default function EmployeePage() {
                 {employeeStats.map((e) => (
                   <tr
                     key={e.employee}
-                    onClick={() => setSelectedEmployee(e.employee)}
+                    onClick={() => openEntity(e.employee)}
                     style={{ cursor: 'pointer' }}
                     title="點擊查看進階分析"
                   >
@@ -179,7 +180,7 @@ export default function EmployeePage() {
         </Card>
       </div>
 
-      <EmployeeDetail employee={selectedEmployee} onClose={() => setSelectedEmployee(null)} />
+      <EmployeeDetail />
     </>
   );
 }

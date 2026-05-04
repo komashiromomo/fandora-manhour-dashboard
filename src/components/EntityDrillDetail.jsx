@@ -10,7 +10,7 @@
  * 已被 root 或先前 drill 鎖定的維度，不會再出現在 breakdown
  * （例：rootKind=employee 時不顯示「員工」breakdown，只顯示 IP / 部門 / 工作項目 / 月份）
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Drawer } from 'antd';
 import { groupBy, sumBy, orderBy } from 'lodash-es';
 import { KPICard, Card, LineChart, TopList, Empty } from './v2';
@@ -24,6 +24,7 @@ import {
   makeMonthlyDetail,
   calcEntityTotalCost,
 } from '../utils/analyticsHelpers';
+import { useRoute } from '../router/RouteProvider';
 
 const KIND_LABEL = {
   project: 'IP',
@@ -194,12 +195,8 @@ function DailyDetail({ logs }) {
 export default function EntityDrillDetail({ rootKind, rootValue, onClose }) {
   const { workLogs, salaryData } = useData();
   const { showCost, customIPs } = useTheme();
-  const [drills, setDrills] = useState([]);
-
-  // 切換 root 時重置 drill
-  useEffect(() => {
-    setDrills([]);
-  }, [rootKind, rootValue]);
+  const { route, pushDrill: routePushDrill, popDrillsTo: routePopTo } = useRoute();
+  const drills = route.drills || [];
 
   const rootLogs = useMemo(() => {
     if (!rootValue) return [];
@@ -284,8 +281,8 @@ export default function EntityDrillDetail({ rootKind, rootValue, onClose }) {
     [filteredLogs, workLogs, salaryData]
   );
 
-  const pushDrill = (kind, value) => setDrills((d) => [...d, { kind, value }]);
-  const popToLevel = (level) => setDrills((d) => d.slice(0, level));
+  const pushDrill = (kind, value) => routePushDrill(kind, value);
+  const popToLevel = (level) => routePopTo(level);
 
   const open = !!rootValue;
   const isRoot = drills.length === 0;

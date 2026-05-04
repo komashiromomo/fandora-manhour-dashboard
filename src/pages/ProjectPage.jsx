@@ -1,7 +1,7 @@
 /**
  * 專案分析頁 — Fandora V2 設計風格
  */
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { groupBy, sumBy, orderBy } from 'lodash-es';
 import {
   KPICard,
@@ -14,6 +14,7 @@ import {
 import FilterToolbar from '../components/FilterToolbar';
 import ProjectDetail from '../components/ProjectDetail';
 import IpMisrecordWarning from '../components/IpMisrecordWarning';
+import { useRoute } from '../router/RouteProvider';
 import { useData } from '../data/DataContext';
 import { roundHours } from '../utils/dates';
 import { calcProjectCost } from '../utils/costCalculator';
@@ -27,7 +28,7 @@ const IP_PALETTE = [
 export default function ProjectPage() {
   const { filteredLogs, salaryData } = useData();
   const { showCost } = useTheme();
-  const [selectedProject, setSelectedProject] = useState(null);
+  const { openEntity } = useRoute();
 
   const projectStats = useMemo(() => {
     const grouped = groupBy(filteredLogs, 'ipProject');
@@ -72,7 +73,7 @@ export default function ProjectPage() {
         name: p.project,
         value: p.hours,
         color: IP_PALETTE[i % IP_PALETTE.length],
-        onClick: () => setSelectedProject(p.project),
+        onClick: () => openEntity(p.project),
       })),
     [ipProjects]
   );
@@ -83,7 +84,7 @@ export default function ProjectPage() {
         label: p.project,
         value: p.hours,
         color: IP_PALETTE[i % IP_PALETTE.length],
-        onClick: () => setSelectedProject(p.project),
+        onClick: () => openEntity(p.project),
       })),
     [ipProjects]
   );
@@ -183,7 +184,7 @@ export default function ProjectPage() {
                 {statsWithCost.map((p) => (
                   <tr
                     key={p.project}
-                    onClick={() => setSelectedProject(p.project)}
+                    onClick={() => openEntity(p.project)}
                     style={{ cursor: 'pointer' }}
                     title="點擊查看進階分析"
                   >
@@ -235,7 +236,7 @@ export default function ProjectPage() {
         </Card>
       </div>
 
-      <ProjectDetail project={selectedProject} onClose={() => setSelectedProject(null)} />
+      <ProjectDetail />
     </>
   );
 }

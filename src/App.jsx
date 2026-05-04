@@ -7,6 +7,7 @@ import { useDataLoader } from './data/useDataLoader';
 import LoginScreen from './auth/LoginScreen';
 import Layout from './components/Layout';
 import { ThemeProvider, useTheme } from './components/ThemeProvider';
+import { RouteProvider, useRoute } from './router/RouteProvider';
 import TweaksPanel from './components/TweaksPanel';
 import WeeklyMisrecordReminder from './components/WeeklyMisrecordReminder';
 import IslandLeaves from './components/IslandLeaves';
@@ -124,7 +125,8 @@ function LoadingScreen() {
 
 function AppContent() {
   const { isLoading, isAuthenticated } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
+  const { route, setTab } = useRoute();
+  const activeTab = route.tab;
 
   if (isLoading) return <LoadingScreen />;
   if (!isAuthenticated) return <LoginScreen />;
@@ -135,7 +137,7 @@ function AppContent() {
     <DataProvider>
       <AutoLoader />
       <IslandLeaves />
-      <Layout activeTab={activeTab} onTabChange={setActiveTab}>
+      <Layout activeTab={activeTab} onTabChange={setTab}>
         <PageComponent />
       </Layout>
       <TweaksPanel />
@@ -168,11 +170,13 @@ export default function App() {
   return (
     <ConfigProvider locale={zhTW} theme={ANTD_THEME}>
       <ThemeProvider>
-        <ErrorBoundary>
-          <AuthProvider>
-            <AppContent />
-          </AuthProvider>
-        </ErrorBoundary>
+        <RouteProvider>
+          <ErrorBoundary>
+            <AuthProvider>
+              <AppContent />
+            </AuthProvider>
+          </ErrorBoundary>
+        </RouteProvider>
       </ThemeProvider>
     </ConfigProvider>
   );

@@ -6,7 +6,7 @@
  * - 不再使用 Ant Design Layout / Tabs（避免雙套 chrome）
  */
 import React, { useState } from 'react';
-import { Spin, Dropdown } from 'antd';
+import { Spin, Dropdown, message } from 'antd';
 import Icon from './Icon';
 import { useAuth } from '../auth/AuthContext';
 import { useData } from '../data/DataContext';
@@ -144,6 +144,18 @@ function Header({ title, crumb, onCollapse, onRefresh }) {
       <div className="live-pulse" title={lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : '尚未同步'}>
         {formatRelative(lastSyncedAt)}
       </div>
+      <button
+        className="icon-btn"
+        title="複製目前檢視的連結（可分享給同事）"
+        onClick={() => {
+          navigator.clipboard
+            .writeText(window.location.href)
+            .then(() => message.success('已複製目前檢視的連結到剪貼簿'))
+            .catch(() => message.error('複製失敗，請手動從網址列複製'));
+        }}
+      >
+        <Icon name="upload" size={16} />
+      </button>
       <button className="icon-btn" title="重新整理（強制重抓 Drive）" onClick={onRefresh}>
         <Icon name="refresh" size={16} />
       </button>

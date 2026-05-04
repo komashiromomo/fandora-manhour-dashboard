@@ -1,7 +1,7 @@
 /**
  * 部門分析頁 — Fandora V2 設計風格
  */
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { groupBy, sumBy, orderBy } from 'lodash-es';
 import {
   KPICard,
@@ -13,6 +13,7 @@ import {
 import FilterToolbar from '../components/FilterToolbar';
 import DepartmentDetail from '../components/DepartmentDetail';
 import IpMisrecordWarning from '../components/IpMisrecordWarning';
+import { useRoute } from '../router/RouteProvider';
 import { useData } from '../data/DataContext';
 import { roundHours } from '../utils/dates';
 import { calcDeptCost } from '../utils/costCalculator';
@@ -26,7 +27,7 @@ const DEPT_PALETTE = [
 export default function DepartmentPage() {
   const { filteredLogs, salaryData } = useData();
   const { showCost } = useTheme();
-  const [selectedDept, setSelectedDept] = useState(null);
+  const { openEntity } = useRoute();
 
   const deptCosts = useMemo(() => calcDeptCost(filteredLogs, salaryData), [filteredLogs, salaryData]);
 
@@ -63,7 +64,7 @@ export default function DepartmentPage() {
         label: d.dept,
         value: d.hours,
         color: d.color,
-        onClick: () => setSelectedDept(d.dept),
+        onClick: () => openEntity(d.dept),
       })),
     [deptStats]
   );
@@ -153,7 +154,7 @@ export default function DepartmentPage() {
                 {deptStats.map((d) => (
                   <tr
                     key={d.dept}
-                    onClick={() => setSelectedDept(d.dept)}
+                    onClick={() => openEntity(d.dept)}
                     style={{ cursor: 'pointer' }}
                     title="點擊查看進階分析"
                   >
@@ -173,7 +174,7 @@ export default function DepartmentPage() {
         </Card>
       </div>
 
-      <DepartmentDetail department={selectedDept} onClose={() => setSelectedDept(null)} />
+      <DepartmentDetail />
     </>
   );
 }
