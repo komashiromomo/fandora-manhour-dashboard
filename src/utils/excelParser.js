@@ -278,7 +278,13 @@ export function parseIndividualSheets(workbook, filename) {
         if (!row || row.length === 0) continue;
 
         const rawDate = row[dateColIdx];
-        const hasDate = rawDate !== undefined && rawDate !== null && String(rawDate).trim() !== '';
+        const dateStr = String(rawDate ?? '').trim();
+
+        // 範例列（A 欄填「範例 1」「範例 2」「example 1」等）— 整列跳過，且不 carry-forward
+        // 否則範例列的 IP / 工作項目會 carry-forward 到後續正常列，造成資料污染
+        if (/^範例\s*\d*$|^example\s*\d*$|^示例\s*\d*$/i.test(dateStr)) continue;
+
+        const hasDate = rawDate !== undefined && rawDate !== null && dateStr !== '';
         const ipVal = String(row[ipColIdx] || '').trim();
         const taskVal = String(row[taskColIdx] || '').trim();
         const hoursVal = row[hoursColIdx];
