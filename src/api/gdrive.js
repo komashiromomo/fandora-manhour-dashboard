@@ -1,7 +1,7 @@
 import {
   DEFAULT_API_KEY, DEFAULT_FOLDER_ID, GDRIVE_API_BASE,
   GDRIVE_EXPORT_MIMETYPE, GOOGLE_SHEETS_MIMETYPE, GOOGLE_FOLDER_MIMETYPE,
-  LS_API_KEY, LS_FOLDER_ID,
+  LS_API_KEY, LS_FOLDER_ID, CACHE_FILE_NAME,
 } from '../config/constants';
 
 /** 取 API Key（env 優先，localStorage 次之） */
@@ -97,4 +97,79 @@ export async function testConnection(accessToken) {
   } catch {
     return false;
   }
+}
+
+// ============== Drive 共享 cache file（跨設備 / 跨同事） ==============
+
+/**
+ * 找指定 folder 內的 dashboard cache file
+ * @returns {Promise<{id,name,modifiedTime,size}|null>}
+ */
+export async function findCacheFile(folderId, accessToken) {
+  // q 字串中 single quote 要 escape
+  const safeName = CACHE_FILE_NAME.replace(/'/g, "\\'");
+  const params = new URLSearchParams({
+    q: `'${folderId}' in parents and name='${safeName}' and trashed=false`,
+    fields: 'files(id,name,modifiedTime,size)',
+    supportsAllDrives: 'true',
+    includeItemsFromAllDrives: 'true',
+    corpora: 'allDrives',
+  });
+  const res = await fetch(`${GDRIVE_API_BASE}/files?${params}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.files?.[0] || null;
+}
+
+/** 讀 cache file 內容（JSON） */
+export async function readCacheFile(fileId, accessToken) {
+  const url = `${GDRIVE_API_BASE}/files/${fileId}?alt=media&supportsAllDrives=true`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    throw new Error(`Read cache error: ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
+ * 寫 cache file（新建或覆蓋既有）
+ * 用 multipart upload 一次傳 metadata + JSON content
+ */
+export async function writeCacheFile(folderId, content, accessToken) {
+  const existing = await findCacheFile(folderId, accessToken);
+  const meta = { name: CACHE_FILE_NAME, mimeType: 'application/json' };
+  if (!existing) meta.parents = [folderId];
+
+  const url = existing
+    ? `https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=multipart&supportsAllDrives=true`
+    : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true`;
+  const method = existing ? 'PATCH' : 'POST';
+
+  const boundary = '-------fandora-' + Math.random().toString(36).slice(2);
+  const body =
+    `--${boundary}\r\n` +
+    `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+    JSON.stringify(meta) +
+    `\r\n--${boundary}\r\n` +
+    `Content-Type: application/json\r\n\r\n` +
+    JSON.stringify(content) +
+    `\r\n--${boundary}--`;
+
+  const res = await fetch(url, {
+    method,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': `multipart/related; boundary=${boundary}`,
+    },
+    body,
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => '');
+    throw new Error(`Write cache error: ${res.status} ${txt.slice(0, 200)}`);
+  }
+  return res.json();
 }

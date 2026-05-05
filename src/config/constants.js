@@ -21,8 +21,14 @@ export const GOOGLE_SHEETS_MIMETYPE = 'application/vnd.google-apps.spreadsheet';
 export const GOOGLE_FOLDER_MIMETYPE = 'application/vnd.google-apps.folder';
 
 // ===== OAuth Scope =====
+// drive.readonly：讀工作日誌、薪資表（user 自建的 sheets）
+// drive.file：寫 / 讀本 dashboard 自己建立的 cache JSON（讓全公司同事共享 cache）
 export const DRIVE_READONLY_SCOPE =
-  'https://www.googleapis.com/auth/drive.readonly';
+  'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file';
+
+// 雲端共享 cache 設定
+export const CACHE_FILE_NAME = 'fandora-dashboard-cache.json';
+export const CACHE_TTL_MINUTES = 60; // cache 60 分鐘內視為新鮮
 
 // ===== localStorage 鍵 =====
 export const LS_API_KEY = 'gdrive_api_key';
