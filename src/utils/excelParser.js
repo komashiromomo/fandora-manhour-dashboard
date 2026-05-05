@@ -273,13 +273,11 @@ export function parseIndividualSheets(workbook, filename) {
       let lastTask = '';
 
       // 是否為「實際工作日期」：數字（Excel serial）或 M/D / YYYY/MM/DD 字串
-      // 任何不符合的（header「日期」、範例 1/2、空白等）都不算正式記錄
       const isWorkDate = (raw) => {
         if (raw == null) return false;
         if (typeof raw === 'number') return raw >= 10000 && raw <= 80000;
         const s = String(raw).trim();
         if (!s) return false;
-        // 移除星期後綴 "（五）"
         const cleaned = s.replace(/[（(][^）)]*[）)]/g, '').trim();
         return (
           /^\d{1,2}[\/\-]\d{1,2}$/.test(cleaned) ||
@@ -288,24 +286,34 @@ export function parseIndividualSheets(workbook, filename) {
       };
 
       // 解析資料列
+      // 規則（B3 carry-forward + header/範例 防污染）：
+      //   1. rawDate 是「實際工作日期」 → 更新 lastDate，繼續處理
+      //   2. rawDate 是「空白」          → 用 lastDate carry-forward（接續列）
+      //   3. rawDate 是「明顯非日期字串」（"日期"、"範例N"、"備註"、星期 等）→ skip + 不 carry
       for (let i = dataStartIdx; i < rows.length; i++) {
         const row = rows[i];
         if (!row || row.length === 0) continue;
 
         const rawDate = row[dateColIdx];
+        const dateStr = String(rawDate ?? '').trim();
+        const isWork = isWorkDate(rawDate);
+        const isBlank = dateStr === '';
 
-        // 嚴格規則：只有實際工作日期的 row 才算正式工作記錄
-        // 涵蓋 header（"日期"）、範例 1/2、空白、其他標記列 — 全部跳過、不 carry-forward
-        if (!isWorkDate(rawDate)) continue;
+        if (isWork) {
+          lastDate = rawDate; // 更新基準日期
+        } else if (isBlank) {
+          // 空白：B3 接續列邏輯，只在已經有 lastDate 時才用
+          if (lastDate === undefined) continue;
+        } else {
+          // 有值但不是日期（header「日期」/「範例 N」/「備註」/「星期」等）
+          continue;
+        }
 
-        const dateStr = String(rawDate).trim();
-        const hasDate = true;
         const ipVal = String(row[ipColIdx] || '').trim();
         const taskVal = String(row[taskColIdx] || '').trim();
         const hoursVal = row[hoursColIdx];
 
-        // Carry-forward 機制：日期保留原始 raw（number serial 不要 String 化）
-        if (hasDate) lastDate = rawDate;
+        // IP / task carry-forward 也保留（員工同一天連續填多筆時可能省略 IP / task）
         if (ipVal && ipVal !== '-' && ipVal !== '無') lastIP = ipVal;
         if (taskVal) lastTask = taskVal;
 

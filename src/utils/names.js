@@ -9,6 +9,7 @@ import {
   NICKNAME_TO_REAL,
   EMPLOYEE_DEPT_MAP,
   KNOWN_IP_LIST,
+  IP_ALIAS,
   ALL_STAFF_FILENAME_REGEX,
   INDIVIDUAL_FILENAME_REGEX,
   INDIVIDUAL_FILENAME_REGEX_LEGACY,
@@ -113,24 +114,38 @@ export function isKnownIP(name, customIPs) {
 }
 
 /**
+ * 把 IP 別名規範化為主名
+ *  - 「老高」 → 「老高與小茉」
+ *  - 「力氣」 → 「力Qii」
+ *  - 「ㄇㄚˊ幾兔」 → 「ㄇㄚˊ幾」
+ *  其他原樣回傳。
+ */
+export function normalizeIPName(name) {
+  if (!name) return name;
+  const trimmed = String(name).trim();
+  return IP_ALIAS[trimmed] || trimmed;
+}
+
+/**
  * 分類 IP 專案
  * - 個人版：有獨立「授權IP」欄位，直接使用
  * - 全員工總表：從 task 名稱推斷
+ * - 統一透過 normalizeIPName 把別名歸併到主名
  *
  * @param {string} task - 工作內容
  * @param {string} [ipColumnValue] - 個人版的授權IP欄位值
- * @returns {string} IP 名稱 or '非授權IP'
+ * @returns {string} 主名 IP 或 '非授權IP'
  */
 export function classifyIP(task, ipColumnValue) {
   // 優先使用個人版的明確 IP 欄位
   if (ipColumnValue && String(ipColumnValue).trim()) {
     const trimmed = String(ipColumnValue).trim();
     if (trimmed !== '' && trimmed !== '-' && trimmed !== '無') {
-      return trimmed;
+      return normalizeIPName(trimmed);
     }
   }
   // 從 task 名稱推斷
-  if (task && isKnownIP(task)) return String(task).trim();
+  if (task && isKnownIP(task)) return normalizeIPName(String(task).trim());
   return '非授權IP';
 }
 

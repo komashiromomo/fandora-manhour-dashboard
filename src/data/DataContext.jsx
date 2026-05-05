@@ -7,10 +7,15 @@ const LS_SALARY = 'fandora_salary_cache';
 const LS_LAST_SYNCED = 'fandora_last_synced_at';
 
 // 已知的「不可能是真 IP」的污染字串（從舊 parser bug 殘留）
+// 包含：header carry-forward bug、cache 內舊清單已移除的活動名（畫博/卡特島市集/其他IP）
 const POLLUTED_TAGS = new Set([
   '授權IP', '授權ip', '日期', '工作項目', '工作開始時間', '工作結束時間',
   '實際時數', '星期', '範例', '範例1', '範例2', '範例 1', '範例 2',
   '備註', '總計', '人事費', '房租場租', '硬體系統費用', '雜費',
+  // 已從 KNOWN_IP_LIST 移除的活動 / 標籤，舊 cache 把它們存成 ipProject 要清掉
+  '其他IP', '畫博', '卡特島市集',
+  // 已歸併的別名（cache 內若還是舊別名要清，重新走 normalizeIPName）
+  '老高', '力氣', 'ㄇㄚˊ幾兔',
 ]);
 
 const readCache = (key) => {
