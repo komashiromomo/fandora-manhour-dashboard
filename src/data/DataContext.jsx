@@ -40,7 +40,7 @@ const readCache = (key) => {
           return 0;
         }
       })();
-      const SCHEMA_VERSION = 2; // 2 = 不再 carry-forward IP/task
+      const SCHEMA_VERSION = 3; // 3 = 個人版禁止 task→IP fallback；lastDate carry 上限 30 行
       if (hasPollution || cacheVersion < SCHEMA_VERSION) {
         console.warn(
           `[DataContext] cache 偵測為舊版 parser 結果（含污染或 v${cacheVersion} < v${SCHEMA_VERSION}），自動清除強制重抓`
@@ -61,7 +61,7 @@ const writeCache = (key, data) => {
     // parserVersion 標記讓未來 schema 升級時舊 cache 自動失效
     localStorage.setItem(
       key,
-      JSON.stringify({ data, ts: Date.now(), parserVersion: 2 })
+      JSON.stringify({ data, ts: Date.now(), parserVersion: 3 })
     );
   } catch (err) {
     // 容量超過 5MB 會 throw，靜默跳過

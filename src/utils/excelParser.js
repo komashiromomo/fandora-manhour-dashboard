@@ -271,6 +271,9 @@ export function parseIndividualSheets(workbook, filename) {
       // ⚠️ 只 carry-forward 日期（B3 接續列省略重複日期是員工常見習慣）
       // 不 carry-forward IP / 工作項目：員工那筆空白 = 真的沒填，不該借用前筆值
       let lastDate;
+      // carry 距離限制：超過 N 行沒看到新日期就重置 lastDate（防錯接很遠的日期）
+      const MAX_CARRY_ROWS = 30;
+      let carryCount = 0;
 
       // 是否為「實際工作日期」：數字（Excel serial）或 M/D / YYYY/MM/DD 字串
       const isWorkDate = (raw) => {
@@ -301,9 +304,20 @@ export function parseIndividualSheets(workbook, filename) {
 
         if (isWork) {
           lastDate = rawDate; // 更新基準日期
+          carryCount = 0;
         } else if (isBlank) {
           // 空白：B3 接續列邏輯，只在已經有 lastDate 時才用
           if (lastDate === undefined) continue;
+          carryCount += 1;
+          if (carryCount > MAX_CARRY_ROWS) {
+            // 超過上限：重置 lastDate，要求看到新日期才能繼續
+            console.warn(
+              `[parseIndividualSheets] lastDate carry 超過 ${MAX_CARRY_ROWS} 行，重置（檔: ${filename}, sheet: ${sheetName}, row: ${i}）`
+            );
+            lastDate = undefined;
+            carryCount = 0;
+            continue;
+          }
         } else {
           // 有值但不是日期（header「日期」/「範例 N」/「備註」/「星期」等）
           continue;
@@ -322,7 +336,9 @@ export function parseIndividualSheets(workbook, filename) {
         if (isNaN(hours) || hours === 0) continue;
 
         // 每筆 row 的 IP / 工作項目 = 該 row 自己的值（空白 = 員工沒填，不 carry）
-        const ipProject = classifyIP(taskVal, ipVal);
+        // 個人版：不允許 task→IP fallback。員工把 IP 名稱填到 task 欄會歸「非授權IP」，
+        //         同時 IpMisrecordWarning 會點名警示（看 isKnownIP(workType)）
+        const ipProject = classifyIP(taskVal, ipVal, { allowTaskFallback: false });
         const workType = taskVal || '其他';
 
         logs.push({

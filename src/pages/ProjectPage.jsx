@@ -167,7 +167,15 @@ export default function ProjectPage() {
           <Treemap data={treemapData} />
         </Card>
 
-        <Card col={12} title="全部專案統計" sub={`${statsWithCost.length} 項`}>
+        <Card
+          col={12}
+          title="全部授權 IP 統計"
+          sub={
+            nonIpProject
+              ? `${ipProjects.length} 個授權 IP（另有 ${Math.round(nonIpHours).toLocaleString()} 小時非授權工時不列入排行）`
+              : `${ipProjects.length} 個授權 IP`
+          }
+        >
           <div className="tbl-wrap">
             <table className="tbl">
               <thead>
@@ -181,7 +189,7 @@ export default function ProjectPage() {
                 </tr>
               </thead>
               <tbody>
-                {statsWithCost.map((p) => (
+                {ipProjects.map((p) => (
                   <tr
                     key={p.project}
                     onClick={() => openEntity(p.project)}
@@ -193,12 +201,10 @@ export default function ProjectPage() {
                         className="ip-swatch"
                         style={{
                           background:
-                            p.project === '非授權IP'
-                              ? 'var(--fg-muted)'
-                              : IP_PALETTE[
-                                  ipProjects.findIndex((x) => x.project === p.project) %
-                                    IP_PALETTE.length
-                                ],
+                            IP_PALETTE[
+                              ipProjects.findIndex((x) => x.project === p.project) %
+                                IP_PALETTE.length
+                            ],
                           marginRight: 8,
                         }}
                       />

@@ -128,15 +128,20 @@ export function normalizeIPName(name) {
 
 /**
  * 分類 IP 專案
- * - 個人版：有獨立「授權IP」欄位，直接使用
- * - 全員工總表：從 task 名稱推斷
+ * - 個人版：有獨立「授權IP」欄位，直接使用；員工把 IP 填到 task 欄
+ *   不再認列為 IP 工時（會由 IpMisrecordWarning 點名警示）
+ * - 全員工總表：保留 task 推斷 IP 的 fallback（沒獨立 IP 欄）
  * - 統一透過 normalizeIPName 把別名歸併到主名
  *
  * @param {string} task - 工作內容
  * @param {string} [ipColumnValue] - 個人版的授權IP欄位值
+ * @param {object} [opts]
+ * @param {boolean} [opts.allowTaskFallback=true] - 是否允許從 task 推斷 IP
+ *   個人版 parser 應傳 false（只信 IP 欄；員工誤填到 task 欄不認列）
  * @returns {string} 主名 IP 或 '非授權IP'
  */
-export function classifyIP(task, ipColumnValue) {
+export function classifyIP(task, ipColumnValue, opts = {}) {
+  const { allowTaskFallback = true } = opts;
   // 優先使用個人版的明確 IP 欄位
   if (ipColumnValue && String(ipColumnValue).trim()) {
     const trimmed = String(ipColumnValue).trim();
@@ -144,8 +149,10 @@ export function classifyIP(task, ipColumnValue) {
       return normalizeIPName(trimmed);
     }
   }
-  // 從 task 名稱推斷
-  if (task && isKnownIP(task)) return normalizeIPName(String(task).trim());
+  // 從 task 名稱推斷（只在全員工總表開啟）
+  if (allowTaskFallback && task && isKnownIP(task)) {
+    return normalizeIPName(String(task).trim());
+  }
   return '非授權IP';
 }
 
