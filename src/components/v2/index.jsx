@@ -87,8 +87,10 @@ export function Card({ title, sub, action, children, className = '', col }) {
 }
 
 // ============== LineChart ==============
-export function LineChart({ series, height = 280 }) {
+export function LineChart({ series, height = 280, showLegend }) {
   if (!series?.[0]?.data?.length) return <EmptySvg height={height} />;
+  const hasLabels = series.some((s) => s.label);
+  const renderLegend = showLegend ?? hasLabels;
   const w = 600;
   const h = height;
   const pad = { l: 36, r: 16, t: 16, b: 32 };
@@ -98,7 +100,7 @@ export function LineChart({ series, height = 280 }) {
   const xs = (i) => pad.l + (points <= 1 ? 0 : (i / (points - 1)) * (w - pad.l - pad.r));
   const ys = (v) => pad.t + (1 - v / max) * (h - pad.t - pad.b);
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((t) => Math.round(max * t));
-  return (
+  const svgEl = (
     <svg viewBox={`0 0 ${w} ${h}`} className="line-chart" preserveAspectRatio="none">
       {ticks.map((t, i) => (
         <g key={i}>
@@ -121,12 +123,14 @@ export function LineChart({ series, height = 280 }) {
           path + ` L ${xs(s.data.length - 1)} ${h - pad.b} L ${xs(0)} ${h - pad.b} Z`;
         return (
           <g key={si}>
-            {si === 0 && <path d={area} fill={s.color} opacity=".10" />}
+            {si === 0 && series.length === 1 && (
+              <path d={area} fill={s.color} opacity=".10" />
+            )}
             <path
               d={path}
               fill="none"
               stroke={s.color}
-              strokeWidth={si === 0 ? 2.5 : 2}
+              strokeWidth={2}
               strokeDasharray={s.dashed ? '5 5' : '0'}
             />
             {s.data.map((d, i) => (
@@ -136,6 +140,21 @@ export function LineChart({ series, height = 280 }) {
         );
       })}
     </svg>
+  );
+  return (
+    <>
+      {renderLegend && (
+        <div className="legend" style={{ marginBottom: 8, flexWrap: 'wrap' }}>
+          {series.map((s, i) => (
+            <span className="lg" key={(s.label || '') + i}>
+              <span className="sw" style={{ background: s.color }} />
+              {s.label || `Series ${i + 1}`}
+            </span>
+          ))}
+        </div>
+      )}
+      {svgEl}
+    </>
   );
 }
 

@@ -7,6 +7,7 @@ import { KPICard, Card, TopList, Empty } from '../components/v2';
 import FilterToolbar from '../components/FilterToolbar';
 import EmployeeDetail from '../components/EmployeeDetail';
 import IpMisrecordWarning from '../components/IpMisrecordWarning';
+import MonthlyCompareCard from '../components/MonthlyCompareCard';
 import { useRoute } from '../router/RouteProvider';
 import { useData } from '../data/DataContext';
 import { useAuth } from '../auth/AuthContext';
@@ -134,6 +135,16 @@ export default function EmployeePage() {
         <Card col={12} title="員工工時排行" sub={`${employeeStats.length} 位員工 · 點擊查看詳細`}>
           <TopList items={topList} maxHeight={520} />
         </Card>
+
+        <MonthlyCompareCard
+          title="員工月度工時對比"
+          entityLabel="員工"
+          options={employeeStats.map((e) => ({
+            value: e.employee,
+            label: `${e.employee}（${e.department}）`,
+          }))}
+          filterFn={(log, emp) => log.employee === emp}
+        />
 
         <Card col={12} title="員工統計表" sub={`${employeeStats.length} 位員工`}>
           <div className="tbl-wrap">

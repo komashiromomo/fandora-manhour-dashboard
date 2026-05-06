@@ -14,6 +14,7 @@ import {
 import FilterToolbar from '../components/FilterToolbar';
 import ProjectDetail from '../components/ProjectDetail';
 import IpMisrecordWarning from '../components/IpMisrecordWarning';
+import MonthlyCompareCard from '../components/MonthlyCompareCard';
 import { useRoute } from '../router/RouteProvider';
 import { useData } from '../data/DataContext';
 import { roundHours } from '../utils/dates';
@@ -166,6 +167,17 @@ export default function ProjectPage() {
         <Card col={12} title="IP 工時 Treemap" sub={`${treemapData.length} 個 IP · 區塊面積 = 工時佔比`}>
           <Treemap data={treemapData} />
         </Card>
+
+        <MonthlyCompareCard
+          title="IP 月度工時對比"
+          entityLabel="IP"
+          options={ipProjects.map((p, i) => ({
+            value: p.project,
+            label: p.project,
+            color: IP_PALETTE[i % IP_PALETTE.length],
+          }))}
+          filterFn={(log, ip) => log.ipProject === ip}
+        />
 
         <Card col={12} title="全部專案統計" sub={`${statsWithCost.length} 項`}>
           <div className="tbl-wrap">

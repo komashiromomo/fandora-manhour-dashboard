@@ -7,6 +7,7 @@ import { KPICard, Card, Treemap, TopList, Empty } from '../components/v2';
 import FilterToolbar from '../components/FilterToolbar';
 import WorkTypeDetail from '../components/WorkTypeDetail';
 import IpMisrecordWarning from '../components/IpMisrecordWarning';
+import MonthlyCompareCard from '../components/MonthlyCompareCard';
 import { useData } from '../data/DataContext';
 import { roundHours } from '../utils/dates';
 import { isKnownIP } from '../utils/names';
@@ -213,6 +214,13 @@ export default function WorkTypePage() {
         <Card col={5} title="工作項目工時排行" sub={`${stats.length} 項 · 點擊查看詳細`}>
           <TopList items={topList} maxHeight={520} />
         </Card>
+
+        <MonthlyCompareCard
+          title="工作項目月度工時對比"
+          entityLabel="工作項目"
+          options={stats.map((s) => ({ value: s.workType, label: s.workType, color: s.color }))}
+          filterFn={(log, wt) => log.workType === wt}
+        />
 
         <Card col={7} title="完整工作項目統計" sub={`${stats.length} 項`}>
           <div className="tbl-wrap" style={{ maxHeight: 480, overflowY: 'auto' }}>

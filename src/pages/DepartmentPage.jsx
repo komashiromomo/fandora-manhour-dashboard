@@ -13,6 +13,7 @@ import {
 import FilterToolbar from '../components/FilterToolbar';
 import DepartmentDetail from '../components/DepartmentDetail';
 import IpMisrecordWarning from '../components/IpMisrecordWarning';
+import MonthlyCompareCard from '../components/MonthlyCompareCard';
 import { useRoute } from '../router/RouteProvider';
 import { useData } from '../data/DataContext';
 import { roundHours } from '../utils/dates';
@@ -137,6 +138,13 @@ export default function DepartmentPage() {
         <Card col={7} title="部門工時排行">
           <TopList items={topList} />
         </Card>
+
+        <MonthlyCompareCard
+          title="部門月度工時對比"
+          entityLabel="部門"
+          options={deptStats.map((d) => ({ value: d.dept, label: d.dept, color: d.color }))}
+          filterFn={(log, dept) => log.department === dept}
+        />
 
         <Card col={12} title="部門統計表" sub={`${deptStats.length} 個部門`}>
           <div className="tbl-wrap">
