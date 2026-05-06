@@ -25,14 +25,25 @@ const readCache = (key) => {
     const parsed = JSON.parse(raw);
     const data = Array.isArray(parsed?.data) ? parsed.data : [];
 
-    // workLogs cache：偵測 header / 範例字串污染。命中就 invalidate（強制下次重抓）
+    // workLogs cache：偵測 header / 範例字串污染，或 IP carry-forward 過濫。命中就 invalidate
     if (key === LS_WORKLOGS && data.length > 0) {
       const hasPollution = data.some(
         (l) => l && (POLLUTED_TAGS.has(l.ipProject) || POLLUTED_TAGS.has(l.workType))
       );
-      if (hasPollution) {
+      // 額外偵測：cache 是否來自舊版 parser（會 carry-forward IP）— 透過 schema 標記
+      const cacheVersion = (() => {
+        try {
+          const raw = localStorage.getItem(key);
+          const meta = raw ? JSON.parse(raw) : {};
+          return meta.parserVersion || 0;
+        } catch {
+          return 0;
+        }
+      })();
+      const SCHEMA_VERSION = 2; // 2 = 不再 carry-forward IP/task
+      if (hasPollution || cacheVersion < SCHEMA_VERSION) {
         console.warn(
-          '[DataContext] cache 含 parser bug 殘留的污染資料（如 ipProject="授權IP"），自動清除以強制重抓'
+          `[DataContext] cache 偵測為舊版 parser 結果（含污染或 v${cacheVersion} < v${SCHEMA_VERSION}），自動清除強制重抓`
         );
         localStorage.removeItem(key);
         localStorage.removeItem(LS_LAST_SYNCED);
@@ -47,7 +58,11 @@ const readCache = (key) => {
 
 const writeCache = (key, data) => {
   try {
-    localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() }));
+    // parserVersion 標記讓未來 schema 升級時舊 cache 自動失效
+    localStorage.setItem(
+      key,
+      JSON.stringify({ data, ts: Date.now(), parserVersion: 2 })
+    );
   } catch (err) {
     // 容量超過 5MB 會 throw，靜默跳過
     console.warn(`[DataContext] cache ${key} failed:`, err?.message);

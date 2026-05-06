@@ -268,9 +268,9 @@ export function parseIndividualSheets(workbook, filename) {
       let taskColIdx = 3;
       let hoursColIdx = 6;
 
-      let lastDate; // ⚠️ 保留原始型別（可能是 number Excel serial，String 化會讓 parseDateString 失敗）
-      let lastIP = '';
-      let lastTask = '';
+      // ⚠️ 只 carry-forward 日期（B3 接續列省略重複日期是員工常見習慣）
+      // 不 carry-forward IP / 工作項目：員工那筆空白 = 真的沒填，不該借用前筆值
+      let lastDate;
 
       // 是否為「實際工作日期」：數字（Excel serial）或 M/D / YYYY/MM/DD 字串
       const isWorkDate = (raw) => {
@@ -313,10 +313,6 @@ export function parseIndividualSheets(workbook, filename) {
         const taskVal = String(row[taskColIdx] || '').trim();
         const hoursVal = row[hoursColIdx];
 
-        // IP / task carry-forward 也保留（員工同一天連續填多筆時可能省略 IP / task）
-        if (ipVal && ipVal !== '-' && ipVal !== '無') lastIP = ipVal;
-        if (taskVal) lastTask = taskVal;
-
         const date = lastDate !== undefined ? parseDateString(lastDate, year, monthStr) : '';
         if (!date) continue;
 
@@ -325,10 +321,9 @@ export function parseIndividualSheets(workbook, filename) {
         const hours = roundHours(hoursNum);
         if (isNaN(hours) || hours === 0) continue;
 
-        // IP 和工作項目的優先順序
-        // - 優先使用此列的值，沒有才用 carry-forward
-        const ipProject = classifyIP(taskVal || lastTask, ipVal || lastIP);
-        const workType = taskVal || lastTask || '其他';
+        // 每筆 row 的 IP / 工作項目 = 該 row 自己的值（空白 = 員工沒填，不 carry）
+        const ipProject = classifyIP(taskVal, ipVal);
+        const workType = taskVal || '其他';
 
         logs.push({
           date,
