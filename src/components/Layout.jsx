@@ -190,7 +190,8 @@ export default function Layout({ children, activeTab, onTabChange }) {
           onCollapse={() => setTweak('collapsed', !collapsed)}
           onRefresh={() => {
             setRefreshKey((k) => k + 1);
-            loadFromDrive();
+            // header refresh = 強制略過 cache 重抓（cache 預設 24 小時，這顆鈕讓 user 立即拿最新）
+            loadFromDrive({ forceFresh: true });
           }}
         />
         <div className="content" key={refreshKey}>

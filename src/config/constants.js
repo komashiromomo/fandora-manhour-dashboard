@@ -28,7 +28,9 @@ export const DRIVE_READONLY_SCOPE =
 
 // 雲端共享 cache 設定
 export const CACHE_FILE_NAME = 'fandora-dashboard-cache.json';
-export const CACHE_TTL_MINUTES = 60; // cache 60 分鐘內視為新鮮
+// cache 24 小時內視為新鮮 — 每天從 Drive 抓一次即可，登入不再每次等待
+// 想立即取最新資料 → 按 Header 的「重新整理」按鈕（強制重抓）
+export const CACHE_TTL_MINUTES = 60 * 24;
 
 // ===== localStorage 鍵 =====
 export const LS_API_KEY = 'gdrive_api_key';
