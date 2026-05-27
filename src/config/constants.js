@@ -16,7 +16,9 @@ export const DEFAULT_FOLDER_ID =
 export const DEFAULT_COST_SHEET_ID = import.meta.env.VITE_COST_SHEET_ID || '';
 // IP 清單 Sheet — 從 Drive 自動抓 IP 主名 / 別名
 //   sheet 格式：第一列 header；後續每列第一欄=主名、第二欄起=別名（可多個）
-export const DEFAULT_IP_SHEET_ID = import.meta.env.VITE_IP_SHEET_ID || '';
+//   預設 ID（公司內 sheet）：1OdYYfFrjXNtbxjWXuha4b10l38osHeQg4AI0jCzn9xw
+export const DEFAULT_IP_SHEET_ID =
+  import.meta.env.VITE_IP_SHEET_ID || '1OdYYfFrjXNtbxjWXuha4b10l38osHeQg4AI0jCzn9xw';
 export const GDRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 export const GDRIVE_EXPORT_MIMETYPE =
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
