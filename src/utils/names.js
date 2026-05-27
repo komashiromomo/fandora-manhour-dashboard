@@ -90,40 +90,57 @@ export function getDept(realName) {
 
 /**
  * 判斷是否為已知授權 IP
- * @param {string} name
- * @param {string[]} [customIPs] - 從 ThemeProvider 傳入的使用者自訂 IP 清單；
- *                                 不傳時退回讀 localStorage（給非 React 環境用）
- * @returns {boolean}
+ * 來源優先序：
+ *   1. KNOWN_IP_LIST（hardcoded）
+ *   2. customIPs（React Context 傳入；或從 localStorage 讀）
+ *   3. sheetIPs（從 Drive IP 清單 sheet 載入後寫進 localStorage）
  */
 export function isKnownIP(name, customIPs) {
   if (!name) return false;
   const trimmed = String(name).trim();
   if (KNOWN_IP_LIST.some((ip) => ip === trimmed)) return true;
-  // 優先用傳入的 customIPs；沒傳就讀 LS（fallback for parser / non-React 用法）
+  // customIPs（user 手動加）
   if (Array.isArray(customIPs)) {
-    return customIPs.includes(trimmed);
+    if (customIPs.includes(trimmed)) return true;
+  } else {
+    try {
+      const raw = localStorage.getItem('fandora_custom_ip_list');
+      if (raw) {
+        const list = JSON.parse(raw);
+        if (Array.isArray(list) && list.includes(trimmed)) return true;
+      }
+    } catch {}
   }
+  // sheetIPs（從 Drive sheet 載入）
   try {
-    const raw = localStorage.getItem('fandora_custom_ip_list');
-    if (!raw) return false;
-    const list = JSON.parse(raw);
-    return Array.isArray(list) && list.includes(trimmed);
-  } catch {
-    return false;
-  }
+    const raw = localStorage.getItem('fandora_sheet_ip_list');
+    if (raw) {
+      const list = JSON.parse(raw);
+      if (Array.isArray(list) && list.includes(trimmed)) return true;
+    }
+  } catch {}
+  return false;
 }
 
 /**
  * 把 IP 別名規範化為主名
- *  - 「老高」 → 「老高與小茉」
- *  - 「力氣」 → 「力Qii」
- *  - 「ㄇㄚˊ幾兔」 → 「ㄇㄚˊ幾」
- *  其他原樣回傳。
+ *  順序：
+ *    1. constants.IP_ALIAS（hardcoded）
+ *    2. localStorage 'fandora_sheet_ip_alias'（從 Drive IP 清單 sheet 載入）
+ *  都沒命中 → 原樣回傳
  */
 export function normalizeIPName(name) {
   if (!name) return name;
   const trimmed = String(name).trim();
-  return IP_ALIAS[trimmed] || trimmed;
+  if (IP_ALIAS[trimmed]) return IP_ALIAS[trimmed];
+  try {
+    const raw = localStorage.getItem('fandora_sheet_ip_alias');
+    if (!raw) return trimmed;
+    const sheetAlias = JSON.parse(raw);
+    return sheetAlias?.[trimmed] || trimmed;
+  } catch {
+    return trimmed;
+  }
 }
 
 /**

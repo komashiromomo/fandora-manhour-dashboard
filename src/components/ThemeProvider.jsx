@@ -59,6 +59,39 @@ export function ThemeProvider({ children }) {
     }
   });
 
+  // 從 Drive IP 清單 sheet 載入的 IP（useDataLoader 寫入 LS_SHEET_IP_LIST / LS_SHEET_IP_ALIAS）
+  const [sheetIPs, setSheetIPs] = useState(() => {
+    try {
+      const raw = localStorage.getItem('fandora_sheet_ip_list');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [sheetAliasMap, setSheetAliasMap] = useState(() => {
+    try {
+      const raw = localStorage.getItem('fandora_sheet_ip_alias');
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // 監聽 localStorage 變化（useDataLoader 寫入後同步到 React state）
+  useEffect(() => {
+    const sync = () => {
+      try {
+        const list = JSON.parse(localStorage.getItem('fandora_sheet_ip_list') || '[]');
+        const alias = JSON.parse(localStorage.getItem('fandora_sheet_ip_alias') || '{}');
+        setSheetIPs(Array.isArray(list) ? list : []);
+        setSheetAliasMap(typeof alias === 'object' && alias ? alias : {});
+      } catch {}
+    };
+    // 同視窗內 storage event 不會自己觸發，用 polling 簡單同步（loadFromDrive 後幾秒內生效）
+    const id = setInterval(sync, 3000);
+    return () => clearInterval(id);
+  }, []);
+
   const addCustomIP = useCallback((ip) => {
     const trimmed = String(ip || '').trim();
     if (!trimmed) return;
@@ -91,7 +124,15 @@ export function ThemeProvider({ children }) {
 
   return (
     <ThemeContext.Provider
-      value={{ ...tweaks, setTweak, customIPs, addCustomIP, removeCustomIP }}
+      value={{
+        ...tweaks,
+        setTweak,
+        customIPs,
+        addCustomIP,
+        removeCustomIP,
+        sheetIPs,
+        sheetAliasMap,
+      }}
     >
       {children}
     </ThemeContext.Provider>

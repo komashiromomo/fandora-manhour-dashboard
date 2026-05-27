@@ -21,8 +21,10 @@ import {
   LS_API_KEY,
   LS_FOLDER_ID,
   LS_COST_SHEET_ID,
+  LS_IP_SHEET_ID,
   DEFAULT_API_KEY,
   DEFAULT_FOLDER_ID,
+  DEFAULT_IP_SHEET_ID,
 } from '../config/constants';
 
 export default function SettingsPage() {
@@ -41,6 +43,9 @@ export default function SettingsPage() {
   const [costSheetId, setCostSheetId] = useState(
     () => localStorage.getItem(LS_COST_SHEET_ID) || ''
   );
+  const [ipSheetId, setIpSheetId] = useState(
+    () => DEFAULT_IP_SHEET_ID || localStorage.getItem(LS_IP_SHEET_ID) || ''
+  );
   const [testStatus, setTestStatus] = useState(null);
   const [testLoading, setTestLoading] = useState(false);
 
@@ -48,8 +53,9 @@ export default function SettingsPage() {
     if (apiKey) localStorage.setItem(LS_API_KEY, apiKey);
     if (folderId) localStorage.setItem(LS_FOLDER_ID, folderId);
     if (costSheetId) localStorage.setItem(LS_COST_SHEET_ID, costSheetId);
+    if (ipSheetId) localStorage.setItem(LS_IP_SHEET_ID, ipSheetId);
     setTestStatus({ type: 'success', message: '設定已保存' });
-  }, [apiKey, folderId, costSheetId]);
+  }, [apiKey, folderId, costSheetId, ipSheetId]);
 
   const handleTestConnection = useCallback(async () => {
     setTestLoading(true);
@@ -377,6 +383,28 @@ export default function SettingsPage() {
                 onChange={(e) => setCostSheetId(e.target.value)}
                 placeholder="薪資表 Sheet ID"
               />
+            </div>
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: 6,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--fg-2)',
+                }}
+              >
+                IP 清單 Sheet ID
+              </label>
+              <Input
+                value={ipSheetId}
+                onChange={(e) => setIpSheetId(e.target.value)}
+                placeholder="IP 清單 Sheet ID（第一欄主名 / 第二欄起別名）"
+              />
+              <div style={{ marginTop: 6, fontSize: 11, color: 'var(--fg-3)', lineHeight: 1.6 }}>
+                Sheet 格式：第一列 header，後續每列 A 欄=IP 主名、B 欄起=別名（可多欄）。
+                載入後自動合併到 IP 清單管理。
+              </div>
             </div>
             <Space wrap>
               <Button type="primary" onClick={handleSaveSettings}>

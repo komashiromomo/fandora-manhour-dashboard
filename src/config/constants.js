@@ -14,6 +14,9 @@ export const DEFAULT_API_KEY = import.meta.env.VITE_GDRIVE_API_KEY || '';
 export const DEFAULT_FOLDER_ID =
   import.meta.env.VITE_GDRIVE_FOLDER_ID || '1X5MnrR-2goU5Jo4bQlxaaxv7ESzyceCo';
 export const DEFAULT_COST_SHEET_ID = import.meta.env.VITE_COST_SHEET_ID || '';
+// IP 清單 Sheet — 從 Drive 自動抓 IP 主名 / 別名
+//   sheet 格式：第一列 header；後續每列第一欄=主名、第二欄起=別名（可多個）
+export const DEFAULT_IP_SHEET_ID = import.meta.env.VITE_IP_SHEET_ID || '';
 export const GDRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 export const GDRIVE_EXPORT_MIMETYPE =
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -36,7 +39,11 @@ export const CACHE_TTL_MINUTES = 60 * 24;
 export const LS_API_KEY = 'gdrive_api_key';
 export const LS_FOLDER_ID = 'gdrive_folder_id';
 export const LS_COST_SHEET_ID = 'gdrive_cost_sheet_id';
+export const LS_IP_SHEET_ID = 'gdrive_ip_sheet_id';
 export const LS_ACCESS_TOKEN = 'fandora_access_token';
+// IP 清單從 sheet 載入後的 cache（讓 parser 在非 React context 也能讀）
+export const LS_SHEET_IP_LIST = 'fandora_sheet_ip_list';
+export const LS_SHEET_IP_ALIAS = 'fandora_sheet_ip_alias';
 
 // ===== 暱稱 → 真名（legacy fallback） =====
 // 2026 起檔名與資料欄位皆改用本名；保留此表只為相容 2025 年舊檔。

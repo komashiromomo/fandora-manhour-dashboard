@@ -11,16 +11,24 @@ import {
 } from '../api/gdrive';
 import { parseWorkbook } from '../utils/excelParser';
 import { parseSalarySheet } from '../utils/salaryParser';
+import { parseIPListSheet } from '../utils/ipListParser';
 import { classifyFileType } from '../utils/names';
 import {
   LS_ACCESS_TOKEN,
   LS_COST_SHEET_ID,
   DEFAULT_COST_SHEET_ID,
+  LS_IP_SHEET_ID,
+  DEFAULT_IP_SHEET_ID,
+  LS_SHEET_IP_LIST,
+  LS_SHEET_IP_ALIAS,
   CACHE_TTL_MINUTES,
 } from '../config/constants';
 
 const getCostSheetId = () =>
   DEFAULT_COST_SHEET_ID || localStorage.getItem(LS_COST_SHEET_ID) || '';
+
+const getIPSheetId = () =>
+  DEFAULT_IP_SHEET_ID || localStorage.getItem(LS_IP_SHEET_ID) || '';
 
 const isAuthError = (err) =>
   /401|invalid[_ ]?token|invalid authentication|UNAUTHENTICATED/i.test(
@@ -149,6 +157,27 @@ export function useDataLoader() {
             salaryRecords = parseSalarySheet(buffer);
           } catch (err) {
             console.warn('[loadFromDrive] cost sheet 載入失敗:', err.message);
+          }
+        }
+
+        // 載入 IP 清單 sheet（HR 維護的 IP 主名 / 別名表）
+        const ipSheetId = getIPSheetId();
+        if (ipSheetId) {
+          try {
+            _setLoading(true, '正在載入 IP 清單...');
+            const buffer = await exportSheetAsXlsx(ipSheetId, token);
+            const { ipList, aliasMap } = parseIPListSheet(buffer);
+            if (ipList.length > 0) {
+              localStorage.setItem(LS_SHEET_IP_LIST, JSON.stringify(ipList));
+              localStorage.setItem(LS_SHEET_IP_ALIAS, JSON.stringify(aliasMap));
+              console.info(
+                `[loadFromDrive] IP 清單 ${ipList.length} 個（${Object.keys(aliasMap).length} 個別名）`
+              );
+            } else {
+              console.warn('[loadFromDrive] IP 清單 sheet 解析回 0 個（格式不符？）');
+            }
+          } catch (err) {
+            console.warn('[loadFromDrive] IP 清單 sheet 載入失敗:', err.message);
           }
         }
 

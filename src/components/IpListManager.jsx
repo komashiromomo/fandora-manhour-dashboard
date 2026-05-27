@@ -19,7 +19,7 @@ import { sumBy } from 'lodash-es';
 const SENTINEL = '非授權IP';
 
 export default function IpListManager() {
-  const { customIPs, addCustomIP, removeCustomIP } = useTheme();
+  const { customIPs, addCustomIP, removeCustomIP, sheetIPs, sheetAliasMap } = useTheme();
   const { workLogs } = useData();
   const [newIp, setNewIp] = useState('');
 
@@ -39,10 +39,10 @@ export default function IpListManager() {
       .sort((a, b) => b.hours - a.hours);
   }, [workLogs]);
 
-  // 「未列入清單」= Drive 出現但 KNOWN + custom 都沒收
+  // 「未列入清單」= Drive 出現但 KNOWN + sheet + custom 都沒收
   const knownSet = useMemo(
-    () => new Set([...KNOWN_IP_LIST, ...customIPs]),
-    [customIPs]
+    () => new Set([...KNOWN_IP_LIST, ...sheetIPs, ...customIPs]),
+    [customIPs, sheetIPs]
   );
   const undeclaredIPs = useMemo(
     () => detectedIPs.filter((d) => !knownSet.has(d.ip)),
@@ -59,7 +59,7 @@ export default function IpListManager() {
     <Card
       col={12}
       title="IP 清單管理"
-      sub={`系統內建 ${KNOWN_IP_LIST.length} · 自訂 ${customIPs.length} · Drive 偵測 ${detectedIPs.length}`}
+      sub={`系統內建 ${KNOWN_IP_LIST.length} · Sheet ${sheetIPs.length} · 自訂 ${customIPs.length} · Drive 偵測 ${detectedIPs.length}`}
     >
       {/* Drive 偵測但未列入 — 最重要，置頂 */}
       {undeclaredIPs.length > 0 && (
@@ -178,6 +178,47 @@ export default function IpListManager() {
                 >
                   ×
                 </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 從 Google Sheet 載入的 IP（不可在此刪除，需到 sheet 內改） */}
+      {sheetIPs.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: '.08em',
+              textTransform: 'uppercase',
+              color: 'var(--accent)',
+              fontFamily: 'var(--font-latin)',
+              marginBottom: 8,
+            }}
+          >
+            從 Google Sheet 載入的 IP（{sheetIPs.length}）
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--fg-3)', marginBottom: 8, lineHeight: 1.5 }}>
+            來自 IP 清單 Sheet。要修改請直接編輯該 sheet，然後按「重新整理」或等下次同步。
+            {Object.keys(sheetAliasMap || {}).length > 0 &&
+              ` 內含 ${Object.keys(sheetAliasMap).length} 個別名歸併。`}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {sheetIPs.map((ip) => (
+              <span
+                key={ip}
+                className="tag"
+                style={{
+                  fontSize: 12,
+                  padding: '4px 8px',
+                  background: 'var(--accent-tint)',
+                  color: 'var(--accent)',
+                }}
+                title={sheetAliasMap?.[ip] ? `別名 → ${sheetAliasMap[ip]}` : '主名'}
+              >
+                {ip}
               </span>
             ))}
           </div>
